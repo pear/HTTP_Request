@@ -173,6 +173,13 @@ class HTTP_Request {
             $this->{'_' . $key} = $value;
         }
 
+		// If port is 80 and protocol is https, assume port 443 is to be used
+		// This does mean you can't send an https request to port 80 without
+		// some fudge. (mmm...)
+		if (strcasecmp($this->_url->protocol, 'https') == 0 AND $this->_url->port == 80) {
+			$this->_url->port = 443;
+		}
+
         // Default useragent
         $this->addHeader('User-Agent', 'PEAR HTTP_Request class ( http://pear.php.net/ )');
 
@@ -189,7 +196,20 @@ class HTTP_Request {
 
         // Host header
         if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
-			$host = $this->_url->host . ($this->_url->port != 80 ? ':' . $this->_url->port : '');
+
+			if ($this->_url->port != 80 AND strcasecmp($this->_url->protocol, 'http') == 0) {
+				$host = $this->_url->host . ':' . $this->_url->port;
+
+			} elseif ($this->_url->port != 443 AND strcasecmp($this->_url->protocol, 'https') == 0) {
+				$host = $this->_url->host . ':' . $this->_url->port;
+
+			} elseif ($this->_url->port == 443 AND strcasecmp($this->_url->protocol, 'https') == 0 AND strpos($url, ':443') !== false) {
+				$host = $this->_url->host . ':' . $this->_url->port;
+			
+			} else {
+				$host = $this->_url->host;
+			}
+
             $this->addHeader('Host',  $host);
 
 	        if (extension_loaded('zlib')) {
@@ -357,6 +377,12 @@ class HTTP_Request {
     {
         $host = isset($this->_proxy_host) ? $this->_proxy_host : $this->_url->host;
         $port = isset($this->_proxy_port) ? $this->_proxy_port : $this->_url->port;
+
+		// 4.3.0 supports SSL connections using OpenSSL. The function test determines
+		// we running on at least 4.3.0
+		if (strcasecmp($this->_url->protocol, 'https') == 0 AND function_exists('file_get_contents') AND extension_loaded('openssl')) {
+			$host = 'ssl://' . $host;
+		}
 
         if (   PEAR::isError($err = $this->_sock->connect($host, $port, null, $this->_timeout))
             OR PEAR::isError($err = $this->_sock->write($this->_buildRequest())) ) {
