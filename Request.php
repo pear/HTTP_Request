@@ -486,12 +486,11 @@ class HTTP_Response {
                     $chunksize = hexdec($matches[1]);
                     if ($chunksize > 0) {
                         $chunks[] = substr($body, 0, $chunksize);
-                        $body = substr($body, 0, $chunksize + 2); // Plus trailing CRLF
+                        $body = substr($body, $chunksize + 2); // Plus trailing CRLF
                     } else {
                         break;
                     }
                 } else {
-                    pdd($line);
                     break;
                 }
             }
