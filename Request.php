@@ -19,6 +19,12 @@
 //
 // HTTP_Request Class
 //
+// Simple example, (Fetches yahoo.com and displays it):
+//
+// $a = &new HTTP_Request('http://www.yahoo.com/');
+// $a->sendRequest();
+// echo $a->getResponseBody();
+//
 
 require_once('Net/Socket.php');
 require_once('Net/URL.php');
@@ -306,16 +312,24 @@ class HTTP_Request {
     * Sends the request
     *
     * @access public
+    * @return mixed  PEAR error on error, true otherwise
     */
     function sendRequest()
     {
         $host = isset($this->_proxy_host) ? $this->_proxy_host : $this->_url->host;
         $port = isset($this->_proxy_port) ? $this->_proxy_port : $this->_url->port;
 
-        $this->_sock->connect($host, $port, null, $this->_timeout);
-        $this->_sock->write($this->_buildRequest());
+        if (   PEAR::isError($err = $this->_sock->connect($host, $port, null, $this->_timeout))
+            OR PEAR::isError($err = $this->_sock->write($this->_buildRequest())) ) {
 
-        $this->readResponse();
+           return $err;
+        }
+
+        if (PEAR::isError($err = $this->readResponse()) ) {
+            return $err;
+        }
+        
+        return true;
     }
 
     /**
@@ -406,7 +420,7 @@ class HTTP_Request {
     */
     function readResponse()
     {
-        $this->_response =& new HTTP_Response($this->_sock);
+        $this->_response = &new HTTP_Response($this->_sock);
     }
 }
 
@@ -451,11 +465,17 @@ class HTTP_Response {
     *
     * Reads the entire response, parse out the headers, and checks
     * for chunked encoding.
+    *
+    * @return mixed PEAR Error on error, true otherwise
     */
     function HTTP_Response(&$sock)
     {
         // Fetch all
         $response = $sock->readAll();
+        
+        if (PEAR::isError($response)) {
+            return $response;
+        }
 
         // Sort out headers
         $headers = substr($response, 0, strpos($response, "\r\n\r\n"));
@@ -498,6 +518,9 @@ class HTTP_Response {
             // Save chunks to $this->_body
             $this->_body = implode('', $chunks);
         }
+        
+        return true;
     }
 }
+
 ?>
