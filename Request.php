@@ -326,6 +326,19 @@ class HTTP_Request {
     }
 
     /**
+    * Appends a cookie to "Cookie:" header
+    * 
+    * @param string $name cookie name
+    * @param string $value cookie value
+    * @access public
+    */
+    function addCookie($name, $value)
+    {
+        $cookies = isset($this->_requestHeaders['Cookie']) ? $this->_requestHeaders['Cookie']. '; ' : '';
+		$this->addHeader('Cookie', $cookies . urlencode($name) . '=' . urlencode($value));
+    }
+
+    /**
     * Sends the request
     *
     * @access public
@@ -382,6 +395,16 @@ class HTTP_Request {
     function getResponseBody()
     {
         return isset($this->_response->_body) ? $this->_response->_body : false;
+    }
+
+    /**
+    * Returns cookies set in response
+    * 
+    * @access public
+    */
+    function getResponseCookies()
+    {
+        return isset($this->_response->_cookies) ? $this->_response->_cookies : false;
     }
 
     /**
@@ -470,7 +493,13 @@ class HTTP_Response {
     * @var array
     */
     var $_headers;
-    
+
+    /**
+    * Cookies set in response  
+    * @var array
+    */
+    var $_cookies;
+
     /**
     * Response body
     * @var string
@@ -504,7 +533,46 @@ class HTTP_Response {
             $headername  = substr($value, 0, strpos($value, ':'));
             $headervalue = ltrim(substr($value, strpos($value, ':') + 1));
 
-            $this->_headers[$headername] = $headervalue;
+            if ('Set-Cookie' != $headername) {
+                $this->_headers[$headername] = $headervalue;
+            } else {
+                // Parse a SetCookie header to fill _cookies array
+                $cookie = array(
+                    'expires' => null,
+                    'domain'  => null,
+                    'path'    => null,
+                    'secure'  => false
+                );
+
+                // Only a name=value pair
+                if (!strpos($headervalue, ';')) {
+                    list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $headervalue));
+					$cookie['name']  = urldecode($cookie['name']);
+					$cookie['value'] = urldecode($cookie['value']);
+
+                // Some optional parameters are supplied
+                } else {
+                    $elements = explode(';', $headervalue);
+                    list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $elements[0]));
+					$cookie['name']  = urldecode($cookie['name']);
+					$cookie['value'] = urldecode($cookie['value']);
+
+                    for ($i = 1; $i < count($elements);$i++) {
+                        list ($elName, $elValue) = array_map('trim', explode('=', $elements[$i]));
+                        if ('secure' == $elName) {
+                            $cookie['secure'] = true;
+                        } elseif ('expires' == $elName) {
+                            $cookie['expires'] = str_replace('"', '', $elValue);
+						} elseif ('path' == $elName OR 'domain' == $elName) {
+							$cookie[$elName] = urldecode($elValue);
+                        } else {
+                            $cookie[$elName] = $elValue;
+                        }
+                    }
+                }
+                $this->_cookies[] = $cookie;
+            }
+
         }
 
         // Store body
