@@ -64,6 +64,18 @@ class HTTP_Request_Listener
 
 
    /**
+    * Returns the listener's identifier
+    *
+    * @access public
+    * @return string
+    */
+    function getId()
+    {
+        return $this->_id;
+    }
+
+
+   /**
     * This method is called when Listener is notified of an event
     *
     * @access   public

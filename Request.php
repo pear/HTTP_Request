@@ -179,6 +179,12 @@ class HTTP_Request {
     */
     var $_listeners = array();
 
+   /**
+    * Whether to save response body in response object property  
+    * @var bool
+    */
+    var $_saveBody = true;
+
     /**
     * Constructor
     *
@@ -197,6 +203,7 @@ class HTTP_Request {
     *                  allowRedirects - Whether to follow redirects or not
     *                  maxRedirects   - Max number of redirects to follow
     *                  useBrackets    - Whether to append [] to array variable names
+    *                  saveBody       - Whether to save response body in response object property
     * @access public
     */
     function HTTP_Request($url, $params = array())
@@ -215,7 +222,7 @@ class HTTP_Request {
         $this->_proxy_user = null;
         $this->_proxy_pass = null;
 
-        $this->_allowRedirects = true;
+        $this->_allowRedirects = false;
         $this->_maxRedirects   = 3;
         $this->_redirects      = 0;
 
@@ -252,6 +259,7 @@ class HTTP_Request {
     * Generates a Host header for HTTP/1.1 requests
     *
     * @access private
+    * @return string
     */
     function _generateHostHeader()
     {
@@ -272,13 +280,14 @@ class HTTP_Request {
     }
     
     /**
-    * Resets the object to its initial state.
+    * Resets the object to its initial state (DEPRECATED).
     * Takes the same parameters as the constructor.
     *
     * @param  string $url    The url to be requested
     * @param  array  $params Associative array of parameters
     *                        (see constructor for details)
     * @access public
+    * @deprecated deprecated since 1.2, call the constructor if this is necessary
     */
     function reset($url, $params = array())
     {
@@ -288,7 +297,7 @@ class HTTP_Request {
     /**
     * Sets the URL to be requested
     *
-    * @param  string $url The url to be requested
+    * @param  string The url to be requested
     * @access public
     */
     function setURL($url)
@@ -309,10 +318,10 @@ class HTTP_Request {
     /**
     * Sets a proxy to be used
     *
-    * @param $host Proxy host
-    * @param $port Proxy port
-    * @param $user Proxy username
-    * @param $pass Proxy password
+    * @param string     Proxy host
+    * @param int        Proxy port
+    * @param string     Proxy username
+    * @param string     Proxy password
     * @access public
     */
     function setProxy($host, $port = 8080, $user = null, $pass = null)
@@ -330,8 +339,8 @@ class HTTP_Request {
     /**
     * Sets basic authentication parameters
     *
-    * @param $user Username
-    * @param $pass Password
+    * @param string     Username
+    * @param string     Password
     */
     function setBasicAuth($user, $pass)
     {
@@ -344,7 +353,7 @@ class HTTP_Request {
     /**
     * Sets the method to be used, GET, POST etc.
     *
-    * @param $method Method to use. Use the defined constants for this
+    * @param string     Method to use. Use the defined constants for this
     * @access public
     */
     function setMethod($method)
@@ -355,7 +364,7 @@ class HTTP_Request {
     /**
     * Sets the HTTP version to use, 1.0 or 1.1
     *
-    * @param $http Version to use. Use the defined constants for this
+    * @param string     Version to use. Use the defined constants for this
     * @access public
     */
     function setHttpVer($http)
@@ -366,8 +375,8 @@ class HTTP_Request {
     /**
     * Adds a request header
     *
-    * @param $name Header name
-    * @param $value Header value
+    * @param string     Header name
+    * @param string     Header value
     * @access public
     */
     function addHeader($name, $value)
@@ -378,7 +387,7 @@ class HTTP_Request {
     /**
     * Removes a request header
     *
-    * @param $name Header name to remove
+    * @param string     Header name to remove
     * @access public
     */
     function removeHeader($name)
@@ -391,9 +400,9 @@ class HTTP_Request {
     /**
     * Adds a querystring parameter
     *
-    * @param $name Querystring parameter name
-    * @param $value Querystring parameter value
-    * @param $preencoded Whether the value is already urlencoded or not, default = not
+    * @param string     Querystring parameter name
+    * @param string     Querystring parameter value
+    * @param bool       Whether the value is already urlencoded or not, default = not
     * @access public
     */
     function addQueryString($name, $value, $preencoded = false)
@@ -404,8 +413,8 @@ class HTTP_Request {
     /**
     * Sets the querystring to literally what you supply
     *
-    * @param $querystring The querystring data. Should be of the format foo=bar&x=y etc
-    * @param $preencoded Whether data is already urlencoded or not, default = already encoded
+    * @param string     The querystring data. Should be of the format foo=bar&x=y etc
+    * @param bool       Whether data is already urlencoded or not, default = already encoded
     * @access public
     */
     function addRawQueryString($querystring, $preencoded = true)
@@ -416,9 +425,9 @@ class HTTP_Request {
     /**
     * Adds postdata items
     *
-    * @param $name Post data name
-    * @param $value Post data value
-    * @param $preencoded Whether data is already urlencoded or not, default = not
+    * @param string     Post data name
+    * @param string     Post data value
+    * @param bool       Whether data is already urlencoded or not, default = not
     * @access public
     */
     function addPostData($name, $value, $preencoded = false)
@@ -464,8 +473,8 @@ class HTTP_Request {
     /**
     * Adds raw postdata
     *
-    * @param $postdata The data
-    * @param $preencoded Whether data is preencoded or not, default = already encoded
+    * @param string     The data
+    * @param bool       Whether data is preencoded or not, default = already encoded
     * @access public
     */
     function addRawPostData($postdata, $preencoded = true)
@@ -474,10 +483,12 @@ class HTTP_Request {
     }
 
     /**
-    * Clears any postdata that has been added. Useful for
-    * multiple request scenarios.
+    * Clears any postdata that has been added (DEPRECATED). 
+    * 
+    * Useful for multiple request scenarios.
     *
     * @access public
+    * @deprecated deprecated since 1.2
     */
     function clearPostData()
     {
@@ -498,10 +509,12 @@ class HTTP_Request {
     }
     
     /**
-    * Clears any cookies that have been added. Useful
-    * for multiple request scenarios
+    * Clears any cookies that have been added (DEPRECATED). 
+    * 
+    * Useful for multiple request scenarios
     *
     * @access public
+    * @deprecated deprecated since 1.2
     */
     function clearCookies()
     {
@@ -524,6 +537,9 @@ class HTTP_Request {
         // 4.3.0 supports SSL connections using OpenSSL. The function test determines
         // we running on at least 4.3.0
         if (strcasecmp($this->_url->protocol, 'https') == 0 AND function_exists('file_get_contents') AND extension_loaded('openssl')) {
+            if (isset($this->_proxy_host)) {
+                return PEAR::raiseError('HTTPS proxies are not supported.');
+            }
             $host = 'ssl://' . $host;
         }
 
@@ -538,7 +554,8 @@ class HTTP_Request {
         $this->_notify('sentRequest');
 
         // Read the response
-        if (PEAR::isError($err = $this->readResponse($saveBody)) ) {
+        $this->_response = &new HTTP_Response($this->_sock, $this->_listeners);
+        if (PEAR::isError($err = $this->_response->process($this->_saveBody && $saveBody)) ) {
             return $err;
         }
 
@@ -597,6 +614,7 @@ class HTTP_Request {
     * Returns the response code
     *
     * @access public
+    * @return int
     */
     function getResponseCode()
     {
@@ -606,8 +624,9 @@ class HTTP_Request {
     /**
     * Returns either the named header or all if no name given
     *
-    * @param $headername The header name to return
     * @access public
+    * @param string     The header name to return
+    * @return mixed     either the value of $headername or an array of all header values
     */
     function getResponseHeader($headername = null)
     {
@@ -619,10 +638,10 @@ class HTTP_Request {
     }
 
     /**
-    
     * Returns the body of the response
     *
     * @access public
+    * @return string
     */
     function getResponseBody()
     {
@@ -633,6 +652,7 @@ class HTTP_Request {
     * Returns cookies set in response
     * 
     * @access public
+    * @return array
     */
     function getResponseCookies()
     {
@@ -736,18 +756,6 @@ class HTTP_Request {
         return $request;
     }
 
-    /**
-    * Initiates reading of the response
-    *
-    * @param  bool
-    * @access private
-    */
-    function readResponse($saveBody)
-    {
-        $this->_response = &new HTTP_Response($this->_sock, $this->_listeners);
-        return $this->_response->process($saveBody);
-    }
-
 
    /**
     * Adds a Listener to the list of listeners that are notified of
@@ -762,7 +770,7 @@ class HTTP_Request {
         if (!is_a($listener, 'HTTP_Request_Listener')) {
             return false;
         }
-        $this->_listeners[$listener->_id] =& $listener;
+        $this->_listeners[$listener->getId()] =& $listener;
         return true;
     }
 
@@ -777,10 +785,10 @@ class HTTP_Request {
     function detach(&$listener)
     {
         if (!is_a($listener, 'HTTP_Request_Listener') || 
-            !isset($this->_listeners[$listener->_id])) {
+            !isset($this->_listeners[$listener->getId()])) {
             return false;
         }
-        unset($this->_listeners[$listener->_id]);
+        unset($this->_listeners[$listener->getId()]);
         return true;
     }
 
