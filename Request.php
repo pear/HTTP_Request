@@ -710,9 +710,17 @@ class HTTP_Response
             return $response;
         }
 
+       // Handle badly formed headers "\n\n" from Netscape Enterprise Servers.
+       // Locate delimiter type by inspecting headers.
+       $delim = "\r\n";
+       $crnlcrnl = strpos($response, "\r\n\r\n");
+       $nlnl = strpos($response, "\n\n");
+       if (($crnlcrnl === false) || ($nlnl !== false && $nlnl < $crnlcrnl))
+           $delim = "\n";
+
         // Sort out headers
-        $headers = substr($response, 0, strpos($response, "\r\n\r\n"));
-        $headers = explode("\r\n", $headers);
+        $headers = substr($response, 0, strpos($response, "$delim$delim"));
+        $headers = explode($delim, $headers);
 
         list($this->_protocol, $this->_code) = sscanf($headers[0], '%s %s');
         unset($headers[0]);
@@ -765,7 +773,7 @@ class HTTP_Response
         }
 
         // Store body
-        $this->_body = substr($response, strpos($response, "\r\n\r\n") + 4);
+        $this->_body = substr($response, strpos($response, "$delim$delim") + 4);
 
         // If response was chunked, parse it out
         if (@$this->_headers['transfer-encoding'] == 'chunked') {
@@ -773,7 +781,7 @@ class HTTP_Response
             $chunks = array();
             while (true) {
                 $chunksize = 0;
-                $line = substr($body, 0, $pos = strpos($body, "\r\n"));
+                $line = substr($body, 0, $pos = strpos($body, "$delim"));
                 $body = substr($body, $pos + 2);
 
                 if (preg_match('/^([0-9a-f]+)/i', $line, $matches)) {
