@@ -177,7 +177,7 @@ class HTTP_Request {
         $this->_proxy_user = $user;
         $this->_proxy_port = $port;
 
-        if(!empty($user)){
+        if (!empty($user)) {
             $this->addHeader('Proxy-Authorization', 'Basic ' . base64_encode($user . ':' . $pass));
         }
     }
@@ -238,7 +238,7 @@ class HTTP_Request {
     */
     function removeHeader($name)
     {
-        if(isset($this->_requestHeaders[$name])){
+        if (isset($this->_requestHeaders[$name])) {
             unset($this->_requestHeaders[$name]);
         }
     }
@@ -327,9 +327,9 @@ class HTTP_Request {
     */
     function getResponseHeader($headername = null)
     {
-        if(!isset($headername)){
+        if (!isset($headername)) {
             return $this->_response->_headers;
-        }else{
+        } else {
             return isset($this->_response->_headers[$headername]) ? $this->_response->_headers[$headername] : false;
         }
     }
@@ -362,15 +362,15 @@ class HTTP_Request {
         $request = $this->_method . ' ' . $url . ' HTTP/' . $this->_http . "\r\n";
 
         // Request Headers
-        if(!empty($this->_requestHeaders)){
-            foreach($this->_requestHeaders as $name => $value){
+        if (!empty($this->_requestHeaders)) {
+            foreach ($this->_requestHeaders as $name => $value) {
                 $request .= $name . ': ' . $value . "\r\n";
             }
         }
 
         // Post data if it's an array
-        if(!empty($this->_postData) AND is_array($this->_postData)){
-            foreach($this->_postData as $name => $value){
+        if (!empty($this->_postData) AND is_array($this->_postData)) {
+            foreach($this->_postData as $name => $value) {
                 $postdata[] = $name . '=' . $value;
             }
             $postdata = implode('&', $postdata);
@@ -378,12 +378,12 @@ class HTTP_Request {
             $request .= $postdata;
 
         // Post data if it's raw
-        }elseif(!empty($this->_postData)){
+        } elseif(!empty($this->_postData)) {
             $request .= 'Content-Length: ' . strlen($this->_postData) . "\r\n\r\n";
             $request .= $this->_postData;
 
         // No post data, so simply add a final CRLF
-        }else{
+        } else {
             $request .= "\r\n";
         }
         
@@ -454,7 +454,7 @@ class HTTP_Response {
 
         list($this->_protocol, $this->_code) = sscanf($headers[0], '%s %s');
         unset($headers[0]);
-        foreach($headers as $value){
+        foreach ($headers as $value) {
             $headername  = substr($value, 0, strpos($value, ':'));
             $headervalue = ltrim(substr($value, strpos($value, ':') + 1));
 
@@ -465,23 +465,23 @@ class HTTP_Response {
         $this->_body = substr($response, strpos($response, "\r\n\r\n") + 4);
 
         // If response was chunked, parse it out
-        if(@$this->_headers['Transfer-Encoding'] == 'chunked'){
+        if (@$this->_headers['Transfer-Encoding'] == 'chunked') {
             $body   = $this->_body;
             $chunks = array();
-            while(true){
+            while (true) {
                 $chunksize = 0;
                 $line = substr($body, 0, $pos = strpos($body, "\r\n"));
                 $body = substr($body, $pos + 2);
 
-                if(preg_match('/^([0-9a-f]+)/i', $line, $matches)){
+                if (preg_match('/^([0-9a-f]+)/i', $line, $matches)) {
                     $chunksize = hexdec($matches[1]);
-                    if($chunksize > 0){
+                    if ($chunksize > 0) {
                         $chunks[] = substr($body, 0, $chunksize);
                         $body = substr($body, 0, $chunksize + 2); // Plus trailing CRLF
-                    }else{
+                    } else {
                         break;
                     }
-                }else{
+                } else {
                     pdd($line);
                     break;
                 }
