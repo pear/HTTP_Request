@@ -44,7 +44,7 @@
 //
 
 require_once('Net/Socket.php');
-require_once('Net/URL.php');
+require_once('../../Net_URL/URL.php');
 
 define('HTTP_REQUEST_METHOD_GET',     'GET',     true);
 define('HTTP_REQUEST_METHOD_HEAD',    'HEAD',    true);
@@ -189,7 +189,8 @@ class HTTP_Request {
 
         // Host header
         if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
-            $this->addHeader('Host', $this->_url->host);
+			$host = $this->_url->host . ($this->_url->port != 80 ? ':' . $this->_url->port : '');
+            $this->addHeader('Host',  $host);
 
 	        if (extension_loaded('zlib')) {
 	            $this->addHeader('Accept-Encoding', 'gzip');
