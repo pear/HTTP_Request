@@ -21,7 +21,7 @@
 //
 
 require_once('Net/Socket.php');
-require_once('HTTP/Url.php');
+require_once('Net/URL.php');
 
 define('HTTP_REQUEST_METHOD_GET',     'GET',     true);
 define('HTTP_REQUEST_METHOD_HEAD',    'HEAD',    true);
@@ -126,7 +126,7 @@ class HTTP_Request {
     */
     function HTTP_Request($url, $params = array())
     {
-        $this->_url    =& new HTTP_URL($url);
+        $this->_url    =& new Net_URL($url);
         $this->_sock   =& new Net_Socket();
         $this->_method =  HTTP_REQUEST_METHOD_GET;
         $this->_http   =  HTTP_REQUEST_HTTP_VER_1_1;

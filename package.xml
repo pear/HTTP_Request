@@ -30,7 +30,7 @@
       </dir>
     </filelist>
     <deps>
-      <dep type="pkg" rel="ge" version="1.0">HTTP_Url</dep>
+      <dep type="pkg" rel="ge" version="1.0">Net_URL</dep>
       <dep type="pkg" rel="ge" version="1.0">Net_Socket</dep>
     </deps>
   </release>
