@@ -1,6 +1,6 @@
 <?php
 // +-----------------------------------------------------------------------+
-// | Copyright (c) 2002-2003, Richard Heyes                                     |
+// | Copyright (c) 2002, Richard Heyes                                     |
 // | All rights reserved.                                                  |
 // |                                                                       |
 // | Redistribution and use in source and binary forms, with or without    |
@@ -32,15 +32,14 @@
 // | Author: Richard Heyes <richard@phpguru.org>                           |
 // +-----------------------------------------------------------------------+
 
-/**
-* This example will fetch the index page of php.net
-* and display it.
-*/
 
+/**
+* This will grab a webpage and display it
+*/
 	include('HTTP/Request.php');
 
-	$req =& new HTTP_Request('http://www.php.net/');
+	$req = &new HTTP_Request('http://www.php.net');
 	$req->sendRequest();
-
-	echo $req->getResponseBody();
 ?>
+
+<?=$req->getResponseBody()?>
