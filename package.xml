@@ -25,19 +25,16 @@ Proxy Authentication, SSL, file uploads etc.
   </maintainers>
 
   <release>
-    <version>1.2.3</version>
-    <date>2004-10-01</date>
+    <version>1.2.4</version>
+    <date>2004-12-30</date>
     <state>stable</state>
     <license>BSD</license>
     <notes>
-* Auth information is properly extracted from URLs of the form http://user:pass@host/
-  (bug #1507)
-* Connection to server is closed after performing request (bug #1692)
-* Use correct argument separator for generated query stings (bug #1857, see
-  also bug #704 for Net_URL)
-* Do not use gzip encoding if certain string functions are overloaded by
-  mbstring extension (bug #1781)
-* addPostData() now properly handles multidimensional arrays (bug #2233)
+* Notice was raised when processing a response containing secure 
+  cookies (bug #2741)
+* Warning was raised when processing a response with empty body and
+  chunked Transfer-encoding (bug #2792)
+* Improved inline documentation on constructor parameters (bug #2751)
     </notes>
     <filelist>
       <dir name="/" baseinstalldir="HTTP">
@@ -58,6 +55,22 @@ Proxy Authentication, SSL, file uploads etc.
   </release>
   
   <changelog>
+    <release>
+      <version>1.2.3</version>
+      <date>2004-10-01</date>
+      <state>stable</state>
+      <license>BSD</license>
+      <notes>
+* Auth information is properly extracted from URLs of the form http://user:pass@host/
+  (bug #1507)
+* Connection to server is closed after performing request (bug #1692)
+* Use correct argument separator for generated query stings (bug #1857, see
+  also bug #704 for Net_URL)
+* Do not use gzip encoding if certain string functions are overloaded by
+  mbstring extension (bug #1781)
+* addPostData() now properly handles multidimensional arrays (bug #2233)
+      </notes>
+    </release>
     <release>
       <version>1.2.2</version>
       <date>2004-05-19</date>
