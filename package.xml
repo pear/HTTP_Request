@@ -1,33 +1,34 @@
 <?xml version="1.0" encoding="ISO-8859-1" ?>
 <!DOCTYPE package SYSTEM "../package.dtd">
 <package version="1.0">
+
   <name>HTTP_Request</name>
   <summary>Provides an easy way to perform HTTP requests</summary>
   <description>
-    Supports GET/POST/HEAD/TRACE/PUT/DELETE, Basic authentication, Proxy,
-    Proxy Authentication etc.
+Supports GET/POST/HEAD/TRACE/PUT/DELETE, Basic authentication, Proxy,
+Proxy Authentication etc.
   </description>
+
   <maintainers>
     <maintainer>
-      <user>heyesr</user>
+      <user>richard</user>
       <name>Richard Heyes</name>
-      <email>heyesr@php.net</email>
+      <email>richard@php.net</email>
       <role>lead</role>
     </maintainer>
   </maintainers>
+
   <release>
-    <version>1.0</version>
-    <date>2002-02-10</date>
+    <version>1.0.1</version>
+    <date>2002-07-27</date>
     <state>stable</state>
-    <license>PHP 2.02</license>
-    <notes>
-      This is the initial release of the HTTP_Request package.
-    </notes>
+    <license>BSD</license>
+    <notes>License change</notes>
     <filelist>
       <dir name="/" baseinstalldir="HTTP">
-        <file role="php">Request.php</file>
+        <file role="php" name="Request.php" />
         <dir name="docs" role="doc">
-	  <file>example.php</file>
+          <file name="example.php" />
         </dir>
       </dir>
     </filelist>
@@ -36,4 +37,16 @@
       <dep type="pkg" rel="ge" version="1.0">Net_Socket</dep>
     </deps>
   </release>
+  
+  <changelog>
+
+    <release>
+      <version>1.0</version>
+      <date>2002-02-17</date>
+      <state>stable</state>
+      <notes>Initial release of the HTTP_Request package.</notes>
+    </release>
+
+  </changelog>
+  
 </package>
