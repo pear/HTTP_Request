@@ -651,7 +651,7 @@ class HTTP_Request {
 
         $host = isset($this->_proxy_host) ? $this->_url->protocol . '://' . $this->_url->host : '';
         $port = (isset($this->_proxy_host) AND $this->_url->port != 80) ? ':' . $this->_url->port : '';
-        $path = $this->_url->path . $querystring;
+        $path = (empty($this->_url->path)? '/': $this->_url->path) . $querystring;
         $url  = $host . $port . $path;
 
         $request = $this->_method . ' ' . $url . ' HTTP/' . $this->_http . "\r\n";
