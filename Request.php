@@ -167,6 +167,12 @@ class HTTP_Request {
     */
     var $_redirects;
 
+   /**
+    * Whether to append brackets [] to array variables
+    * @var bool
+    */
+    var $_useBrackets = true;
+
     /**
     * Constructor
     *
@@ -184,12 +190,11 @@ class HTTP_Request {
     *                  timeout        - Connection timeout in seconds.
     *                  allowRedirects - Whether to follow redirects or not
     *                  maxRedirects   - Max number of redirects to follow
+    *                  useBrackets    - Whether to append [] to array variable names
     * @access public
     */
     function HTTP_Request($url, $params = array())
     {
-        $this->setURL($url);
-
         $this->_sock           = &new Net_Socket();
         $this->_method         =  HTTP_REQUEST_METHOD_GET;
         $this->_http           =  HTTP_REQUEST_HTTP_VER_1_1;
@@ -215,6 +220,8 @@ class HTTP_Request {
             $this->{'_' . $key} = $value;
         }
 
+        $this->setURL($url);
+
         // Default useragent
         $this->addHeader('User-Agent', 'PEAR HTTP_Request class ( http://pear.php.net/ )');
 
@@ -229,14 +236,9 @@ class HTTP_Request {
             $this->_requestHeaders['Authorization'] = 'Basic ' . base64_encode($this->_user . ':' . $this->_pass);
         }
 
-        // Host header
-        if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
-
-            $this->addHeader('Host', $this->_generateHostHeader());
-
-            if (extension_loaded('zlib')) {
-                $this->addHeader('Accept-Encoding', 'gzip');
-            }
+        // Use gzip encoding if possible
+        if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http && extension_loaded('zlib')) {
+            $this->addHeader('Accept-Encoding', 'gzip');
         }
     }
     
@@ -285,7 +287,7 @@ class HTTP_Request {
     */
     function setURL($url)
     {
-        $this->_url = &new Net_URL($url);
+        $this->_url = &new Net_URL($url, $this->_useBrackets);
 
         // If port is 80 and protocol is https, assume port 443 is to be used
         // This does mean you can't send an https request to port 80 without
@@ -293,8 +295,9 @@ class HTTP_Request {
         if (strcasecmp($this->_url->protocol, 'https') == 0 AND $this->_url->port == 80) {
             $this->_url->port = 443;
         }
-
-        $this->addHeader('Host', $this->_generateHostHeader());
+        if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
+            $this->addHeader('Host', $this->_generateHostHeader());
+        }
     }
     
     /**
@@ -664,7 +667,7 @@ class HTTP_Request {
                     if (is_array($value)) {
                         foreach ($value as $k => $v) {
                             $postdata .= '--' . $boundary . "\r\n";
-                            $postdata .= sprintf('Content-Disposition: form-data; name="%s[%s]"', $name, $k);
+                            $postdata .= 'Content-Disposition: form-data; name="' . $name . ($this->_useBrackets? '[' . $k . ']': '') . '"';
                             $postdata .= "\r\n\r\n" . urldecode($v) . "\r\n";
                         }
                     } else {
@@ -675,7 +678,7 @@ class HTTP_Request {
                 }
                 foreach ($this->_postFiles as $name => $value) {
                     if (is_array($value['name'])) {
-                        $varname       = $name . '[]';
+                        $varname       = $name . ($this->_useBrackets? '[]': '');
                     } else {
                         $varname       = $name;
                         $value['name'] = array($value['name']);
@@ -698,7 +701,7 @@ class HTTP_Request {
                 foreach($this->_postData as $name => $value) {
                     if (is_array($value)) {
                         foreach ($value as $k => $v) {
-                            $postdata[] = sprintf('%s[%s]=%s', $name, $k, $v);
+                            $postdata[] = $this->_useBrackets? sprintf('%s[%s]=%s', $name, $k, $v): $name . '=' . $v;
                         }
                     } else {
                         $postdata[] = $name . '=' . $value;
