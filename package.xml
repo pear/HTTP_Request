@@ -25,17 +25,19 @@ Proxy Authentication, SSL, file uploads etc.
   </maintainers>
 
   <release>
-    <version>1.2.2</version>
-    <date>2004-05-19</date>
+    <version>1.2.3</version>
+    <date>2004-10-01</date>
     <state>stable</state>
     <license>BSD</license>
     <notes>
-Bug fixes:
-* Fixed #1037 (unable to connect to port 80 through HTTPS). This relies
-  on fix for Net_URL bug #1036, thus Net_URL 1.0.12 is now required.
-* Fixed #1333 (sending POST data on non-POST requests).
-* Fixed #1433 (overwriting the variable name when adding multiple files 
-  for upload).
+* Auth information is properly extracted from URLs of the form http://user:pass@host/
+  (bug #1507)
+* Connection to server is closed after performing request (bug #1692)
+* Use correct argument separator for generated query stings (bug #1857, see
+  also bug #704 for Net_URL)
+* Do not use gzip encoding if certain string functions are overloaded by
+  mbstring extension (bug #1781)
+* addPostData() now properly handles multidimensional arrays (bug #2233)
     </notes>
     <filelist>
       <dir name="/" baseinstalldir="HTTP">
@@ -56,6 +58,20 @@ Bug fixes:
   </release>
   
   <changelog>
+    <release>
+      <version>1.2.2</version>
+      <date>2004-05-19</date>
+      <state>stable</state>
+      <license>BSD</license>
+      <notes>
+Bug fixes:
+* Fixed #1037 (unable to connect to port 80 through HTTPS). This relies
+  on fix for Net_URL bug #1036, thus Net_URL 1.0.12 is now required.
+* Fixed #1333 (sending POST data on non-POST requests).
+* Fixed #1433 (overwriting the variable name when adding multiple files 
+  for upload).
+      </notes>
+    </release>
     <release>
       <version>1.2.1</version>
       <date>2004-04-29</date>

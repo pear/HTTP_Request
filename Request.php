@@ -262,7 +262,10 @@ class HTTP_Request {
         }
 
         // Use gzip encoding if possible
-        if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http && extension_loaded('zlib')) {
+        // Avoid gzip encoding if using multibyte functions (see #1781)
+        if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http && extension_loaded('zlib') &&
+            0 == (2 & ini_get('mbstring.func_overload'))) {
+
             $this->addHeader('Accept-Encoding', 'gzip');
         }
     }
@@ -445,7 +448,28 @@ class HTTP_Request {
         if ($preencoded) {
             $this->_postData[$name] = $value;
         } else {
-            $this->_postData[$name] = is_array($value)? array_map('urlencode', $value): urlencode($value);
+            $this->_postData[$name] = $this->_arrayMapRecursive('urlencode', $value);
+        }
+    }
+
+   /**
+    * Recursively applies the callback function to the value
+    * 
+    * @param    mixed   Callback function
+    * @param    mixed   Value to process
+    * @access   private
+    * @return   mixed   Processed value
+    */
+    function _arrayMapRecursive($callback, $value)
+    {
+        if (!is_array($value)) {
+            return call_user_func($callback, $value);
+        } else {
+            $map = array();
+            foreach ($value as $k => $v) {
+                $map[$k] = $this->_arrayMapRecursive($callback, $v);
+            }
+            return $map;
         }
     }
 
@@ -725,22 +749,22 @@ class HTTP_Request {
             $request .= "\r\n";
         // Post data if it's an array
         } elseif ((!empty($this->_postData) && is_array($this->_postData)) || !empty($this->_postFiles)) {
+            // "normal" POST request
+            if (!isset($boundary)) {
+                $postdata = implode('&', array_map(
+                    create_function('$a', 'return $a[0] . \'=\' . $a[1];'), 
+                    $this->_flattenArray('', $this->_postData)
+                ));
+
             // multipart request, probably with file uploads
-            if (isset($boundary)) {
+            } else {
                 $postdata = '';
                 if (!empty($this->_postData)) {
-                    foreach ($this->_postData as $name => $value) {
-                        if (is_array($value)) {
-                            foreach ($value as $k => $v) {
-                                $postdata .= '--' . $boundary . "\r\n";
-                                $postdata .= 'Content-Disposition: form-data; name="' . $name . ($this->_useBrackets? '[' . $k . ']': '') . '"';
-                                $postdata .= "\r\n\r\n" . urldecode($v) . "\r\n";
-                            }
-                        } else {
-                            $postdata .= '--' . $boundary . "\r\n";
-                            $postdata .= 'Content-Disposition: form-data; name="' . $name . '"';
-                            $postdata .= "\r\n\r\n" . urldecode($value) . "\r\n";
-                        }
+                    $flatData = $this->_flattenArray('', $this->_postData);
+                    foreach ($flatData as $item) {
+                        $postdata .= '--' . $boundary . "\r\n";
+                        $postdata .= 'Content-Disposition: form-data; name="' . $item[0] . '"';
+                        $postdata .= "\r\n\r\n" . urldecode($item[1]) . "\r\n";
                     }
                 }
                 foreach ($this->_postFiles as $name => $value) {
@@ -764,18 +788,6 @@ class HTTP_Request {
                     }
                 }
                 $postdata .= '--' . $boundary . "\r\n";
-            } else {
-                foreach($this->_postData as $name => $value) {
-                    if (is_array($value)) {
-                        foreach ($value as $k => $v) {
-                            $postdata[] = $this->_useBrackets? sprintf('%s[%s]=%s', $name, $k, $v): $name . '=' . $v;
-                        }
-                    } else {
-                        $postdata[] = $name . '=' . $value;
-                    }
-                }
-    
-                $postdata = implode('&', $postdata);
             }
             $request .= 'Content-Length: ' . strlen($postdata) . "\r\n\r\n";
             $request .= $postdata;
@@ -787,6 +799,34 @@ class HTTP_Request {
         }
         
         return $request;
+    }
+
+   /**
+    * Helper function to change the (probably multidimensional) associative array
+    * into the simple one.
+    *
+    * @param    string  name for item
+    * @param    mixed   item's values
+    * @return   array   array with the following items: array('item name', 'item value');
+    */
+    function _flattenArray($name, $values)
+    {
+        if (!is_array($values)) {
+            return array(array($name, $values));
+        } else {
+            $ret = array();
+            foreach ($values as $k => $v) {
+                if (empty($name)) {
+                    $newName = $k;
+                } elseif ($this->_useBrackets) {
+                    $newName = $name . '[' . $k . ']';
+                } else {
+                    $newName = $name;
+                }
+                $ret = array_merge($ret, $this->_flattenArray($newName, $v));
+            }
+            return $ret;
+        }
     }
 
 
