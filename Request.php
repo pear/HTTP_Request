@@ -142,7 +142,7 @@ class HTTP_Request {
         }
 
         // Default useragent
-        $this->addHeader('User-Agent', 'PEAR HTTP_Request class ( http://pear.php.net/');
+        $this->addHeader('User-Agent', 'PEAR HTTP_Request class ( http://pear.php.net/ )');
 
         // Default Content-Type
         $this->addHeader('Content-Type', 'application/x-www-form-urlencoded');
