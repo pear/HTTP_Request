@@ -152,7 +152,7 @@ class HTTP_Request {
 
         // Basic authentication
         if (!empty($this->_user)) {
-            $this->_headers['Authorization'] = 'Basic ' . base64_encode($this->_user . ':' . $this->_pass);
+            $this->_requestHeaders['Authorization'] = 'Basic ' . base64_encode($this->_user . ':' . $this->_pass);
         }
 
         // Host header
