@@ -128,7 +128,7 @@ class HTTP_Request {
     *                  proxy_port - Proxy server port
     *                  proxy_user - Proxy auth username
     *                  proxy_pass - Proxy auth password
-	*                  timeout    - Connection timeout in seconds.
+    *                  timeout    - Connection timeout in seconds.
     * @access public
     */
     function HTTP_Request($url, $params = array())
