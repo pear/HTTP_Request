@@ -315,7 +315,11 @@ class HTTP_Request {
     */
     function addPostData($name, $value, $preencoded = false)
     {
-        $this->_postData[$name] = $preencoded ? $value : urlencode($value);
+        if ($preencoded) {
+            $this->_postData[$name] = $value;
+        } else {
+            $this->_postData[$name] = is_array($value)? array_map('urlencode', $value): urlencode($value);
+        }
     }
 
     /**
@@ -439,8 +443,15 @@ class HTTP_Request {
         // Post data if it's an array
         if (!empty($this->_postData) AND is_array($this->_postData)) {
             foreach($this->_postData as $name => $value) {
-                $postdata[] = $name . '=' . $value;
+                if (is_array($value)) {
+                    foreach ($value as $k => $v) {
+                        $postdata[] = sprintf('%s[%s]=%s', $name, $k, $v);
+                    }
+                } else {
+                    $postdata[] = $name . '=' . $value;
+                }
             }
+
             $postdata = implode('&', $postdata);
             $request .= 'Content-Length: ' . strlen($postdata) . "\r\n\r\n";
             $request .= $postdata;
