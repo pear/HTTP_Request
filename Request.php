@@ -60,8 +60,8 @@ define('HTTP_REQUEST_HTTP_VER_1_1', '1.1', true);
 class HTTP_Request {
 
     /**
-    * Full url
-    * @var string
+    * Instance of Net_URL
+    * @var object    
     */
     var $_url;
 
@@ -206,7 +206,7 @@ class HTTP_Request {
     *                  saveBody       - Whether to save response body in response object property
     * @access public
     */
-    function HTTP_Request($url, $params = array())
+    function HTTP_Request($url = '', $params = array())
     {
         $this->_sock           = &new Net_Socket();
         $this->_method         =  HTTP_REQUEST_METHOD_GET;
@@ -233,7 +233,9 @@ class HTTP_Request {
             $this->{'_' . $key} = $value;
         }
 
-        $this->setURL($url);
+        if (!empty($url)) {
+            $this->setURL($url);
+        }
 
         // Default useragent
         $this->addHeader('User-Agent', 'PEAR HTTP_Request class ( http://pear.php.net/ )');
@@ -531,6 +533,10 @@ class HTTP_Request {
     */
     function sendRequest($saveBody = true)
     {
+        if (!is_a($this->_url, 'Net_URL')) {
+            return PEAR::raiseError('No URL given.');
+        }
+
         $host = isset($this->_proxy_host) ? $this->_proxy_host : $this->_url->host;
         $port = isset($this->_proxy_port) ? $this->_proxy_port : $this->_url->port;
 
@@ -614,7 +620,7 @@ class HTTP_Request {
     * Returns the response code
     *
     * @access public
-    * @return int
+    * @return mixed     Response code, false if not set
     */
     function getResponseCode()
     {
@@ -625,13 +631,14 @@ class HTTP_Request {
     * Returns either the named header or all if no name given
     *
     * @access public
-    * @param string     The header name to return
-    * @return mixed     either the value of $headername or an array of all header values
+    * @param string     The header name to return, do not set to get all headers
+    * @return mixed     either the value of $headername (false if header is not present)
+    *                   or an array of all headers
     */
     function getResponseHeader($headername = null)
     {
         if (!isset($headername)) {
-            return $this->_response->_headers;
+            return isset($this->_response->_headers)? $this->_response->_headers: array();
         } else {
             return isset($this->_response->_headers[$headername]) ? $this->_response->_headers[$headername] : false;
         }
@@ -641,7 +648,7 @@ class HTTP_Request {
     * Returns the body of the response
     *
     * @access public
-    * @return string
+    * @return mixed     response body, false if not set
     */
     function getResponseBody()
     {
@@ -652,7 +659,7 @@ class HTTP_Request {
     * Returns cookies set in response
     * 
     * @access public
-    * @return array
+    * @return mixed     array of response cookies, false if none are present
     */
     function getResponseCookies()
     {
