@@ -623,7 +623,9 @@ class HTTP_Request {
         } elseif ($this->_allowRedirects AND $this->_redirects > $this->_maxRedirects) {
             return PEAR::raiseError('Too many redirects');
         }
-        
+
+        $this->_sock->disconnect();
+
         return true;
     }
 
@@ -685,7 +687,10 @@ class HTTP_Request {
     */
     function _buildRequest()
     {
+        $separator = ini_get('arg_separator.output');
+        ini_set('arg_separator.output', '&');
         $querystring = ($querystring = $this->_url->getQueryString()) ? '?' . $querystring : '';
+        ini_set('arg_separator.output', $separator);
 
         $host = isset($this->_proxy_host) ? $this->_url->protocol . '://' . $this->_url->host : '';
         $port = (isset($this->_proxy_host) AND $this->_url->port != 80) ? ':' . $this->_url->port : '';
