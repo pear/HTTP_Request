@@ -19,6 +19,7 @@
     <version>1.0</version>
     <date>2002-02-10</date>
     <state>stable</state>
+    <license>PHP 2.02</license>
     <notes>
       This is the initial release of the HTTP_Request package.
     </notes>
