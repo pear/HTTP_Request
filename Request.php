@@ -781,10 +781,10 @@ class HTTP_Response
     var $_body = '';
 
    /**
-    * Used by _readChunked() to store its internal data
+    * Used by _readChunked(): remaining length of the current chunk
     * @var string
     */
-    var $_chunkBuffer = '';
+    var $_chunkLength = 0;
 
     /**
     * Constructor
@@ -832,7 +832,7 @@ class HTTP_Response
         $gzipped = isset($this->_headers['content-encoding']) && ('gzip' == $this->_headers['content-encoding']);
         while (!$this->_sock->eof()) {
             if ($chunked) {
-                $data = $this->_readChunked(4096);
+                $data = $this->_readChunked();
             } else {
                 $data = $this->_sock->read(4096);
             }
@@ -916,39 +916,28 @@ class HTTP_Response
     * Read a part of response body encoded with chunked Transfer-Encoding
     * 
     * @access private
-    * @param  int   number of bytes to read
     * @return string
     */
-    function _readChunked($size)
+    function _readChunked()
     {
-        while (true) {
-            // check if there's enough in the buffer to return it without
-            // reading additional chunks
-            if ($size <= strlen($this->_chunkBuffer)) {
-                $tmp = substr($this->_chunkBuffer, 0, $size);
-                $this->_chunkBuffer = substr($this->_chunkBuffer, $size);
-                return $tmp;
-
-            // not enough in the buffer, but eof - supply the rest of the buffer
-            } elseif ($this->_sock->eof()) {
-                $tmp = $this->_chunkBuffer;
-                $this->_chunkBuffer = '';
-                return $tmp;
-            }
-
-            // read next chunk to fill the buffer
+        // at start of the next chunk?
+        if (0 == $this->_chunkLength) {
             $line = $this->_sock->readLine();
             if (preg_match('/^([0-9a-f]+)/i', $line, $matches)) {
-                $chunkSize = hexdec($matches[1]); 
+                $this->_chunkLength = hexdec($matches[1]); 
                 // Chunk with zero length indicates the end
-                if (0 == $chunkSize) {
+                if (0 == $this->_chunkLength) {
                     $this->_sock->readAll(); // make this an eof()
-                    continue;
+                    return '';
                 }
-                $this->_chunkBuffer .= $this->_sock->read($chunkSize);
-                $this->_sock->readLine(); // Trailing CRLF
             }
         }
+        $data = $this->_sock->read($this->_chunkLength);
+        $this->_chunkLength -= strlen($data);
+        if (0 == $this->_chunkLength) {
+            $this->_sock->readLine(); // Trailing CRLF
+        }
+        return $data;
     }
 } // End class HTTP_Response
 ?>
