@@ -131,6 +131,12 @@ class HTTP_Request {
     */
     var $_postData;
 
+   /**
+    * Files to post 
+    * @var array
+    */
+    var $_postFiles = array();
+
     /**
     * Connection timeout.
     * @var integer
@@ -415,6 +421,37 @@ class HTTP_Request {
         }
     }
 
+   /**
+    * Adds a file to upload
+    * 
+    * This also changes content-type to 'multipart/form-data' for proper upload
+    * 
+    * @access public
+    * @param  string    variable name
+    * @param  mixed     file name(s)
+    * @param  mixed     content-type(s) of file(s) being uploaded
+    * @return bool      true on success
+    * @throws PEAR_Error
+    */
+    function addFile($name, $filename, $contentType = 'application/octet-stream')
+    {
+        if (!is_array($filename) && !is_readable($filename)) {
+            return PEAR::raiseError("File '{$filename}' is not readable");
+        } elseif (is_array($filename)) {
+            foreach ($filename as $name) {
+                if (!is_readable($name)) {
+                    return PEAR::raiseError("File '{$name}' is not readable");
+                }
+            }
+        }
+        $this->addHeader('Content-Type', 'multipart/form-data');
+        $this->_postFiles[$name] = array(
+            'name' => $filename,
+            'type' => $contentType
+        );
+        return true;
+    }
+
     /**
     * Adds raw postdata
     *
@@ -606,6 +643,11 @@ class HTTP_Request {
 
         $request = $this->_method . ' ' . $url . ' HTTP/' . $this->_http . "\r\n";
 
+        if ('multipart/form-data' == $this->_requestHeaders['Content-Type']) {
+            $boundary = 'HTTP_Request_' . md5(uniqid('request') . microtime());
+            $this->addHeader('Content-Type', 'multipart/form-data; boundary=' . $boundary);
+        }
+
         // Request Headers
         if (!empty($this->_requestHeaders)) {
             foreach ($this->_requestHeaders as $name => $value) {
@@ -614,18 +656,57 @@ class HTTP_Request {
         }
 
         // Post data if it's an array
-        if (!empty($this->_postData) AND is_array($this->_postData)) {
-            foreach($this->_postData as $name => $value) {
-                if (is_array($value)) {
-                    foreach ($value as $k => $v) {
-                        $postdata[] = sprintf('%s[%s]=%s', $name, $k, $v);
+        if ((!empty($this->_postData) && is_array($this->_postData)) || !empty($this->_postFiles)) {
+            // multipart request, probably with file uploads
+            if (isset($boundary)) {
+                $postdata = '';
+                foreach ($this->_postData as $name => $value) {
+                    if (is_array($value)) {
+                        foreach ($value as $k => $v) {
+                            $postdata .= '--' . $boundary . "\r\n";
+                            $postdata .= sprintf('Content-Disposition: form-data; name="%s[%s]"', $name, $k);
+                            $postdata .= "\r\n\r\n" . urldecode($v) . "\r\n";
+                        }
+                    } else {
+                        $postdata .= '--' . $boundary . "\r\n";
+                        $postdata .= 'Content-Disposition: form-data; name="' . $name . '"';
+                        $postdata .= "\r\n\r\n" . urldecode($value) . "\r\n";
                     }
-                } else {
-                    $postdata[] = $name . '=' . $value;
                 }
-            }
+                foreach ($this->_postFiles as $name => $value) {
+                    if (is_array($value['name'])) {
+                        $varname       = $name . '[]';
+                    } else {
+                        $varname       = $name;
+                        $value['name'] = array($value['name']);
+                    }
+                    foreach ($value['name'] as $key => $filename) {
+                        $fp   = fopen($filename, 'r');
+                        $data = fread($fp, filesize($filename));
+                        fclose($fp);
+                        $basename = basename($filename);
+                        $type     = is_array($value['type'])? @$value['type'][$key]: $value['type'];
 
-            $postdata = implode('&', $postdata);
+                        $postdata .= '--' . $boundary . "\r\n";
+                        $postdata .= 'Content-Disposition: form-data; name="' . $varname . '"; filename="' . $basename . '"';
+                        $postdata .= "\r\nContent-Type: " . $type;
+                        $postdata .= "\r\n\r\n" . $data . "\r\n";
+                    }
+                }
+                $postdata .= '--' . $boundary . "\r\n";
+            } else {
+                foreach($this->_postData as $name => $value) {
+                    if (is_array($value)) {
+                        foreach ($value as $k => $v) {
+                            $postdata[] = sprintf('%s[%s]=%s', $name, $k, $v);
+                        }
+                    } else {
+                        $postdata[] = $name . '=' . $value;
+                    }
+                }
+    
+                $postdata = implode('&', $postdata);
+            }
             $request .= 'Content-Length: ' . strlen($postdata) . "\r\n\r\n";
             $request .= $postdata;
 
