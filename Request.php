@@ -136,6 +136,30 @@ class HTTP_Request {
     * @var integer
     */
     var $_timeout;
+    
+    /**
+    * HTTP_Response object
+    * @var object
+    */
+    var $_response;
+    
+    /**
+    * Whether to allow redirects
+    * @var boolean
+    */
+    var $_allowRedirects;
+    
+    /**
+    * Maximum redirects allowed
+    * @var integer
+    */
+    var $_maxRedirects;
+    
+    /**
+    * Current number of redirects
+    * @var integer
+    */
+    var $_redirects;
 
     /**
     * Constructor
@@ -143,42 +167,47 @@ class HTTP_Request {
     * Sets up the object
     * @param $url The url to fetch/access
     * @param $params Associative array of parameters which can be:
-    *                  method     - Method to use, GET, POST etc
-    *                  http       - HTTP Version to use, 1.0 or 1.1
-    *                  user       - Basic Auth username
-    *                  pass       - Basic Auth password
-    *                  proxy_host - Proxy server host
-    *                  proxy_port - Proxy server port
-    *                  proxy_user - Proxy auth username
-    *                  proxy_pass - Proxy auth password
-    *                  timeout    - Connection timeout in seconds.
+    *                  method         - Method to use, GET, POST etc
+    *                  http           - HTTP Version to use, 1.0 or 1.1
+    *                  user           - Basic Auth username
+    *                  pass           - Basic Auth password
+    *                  proxy_host     - Proxy server host
+    *                  proxy_port     - Proxy server port
+    *                  proxy_user     - Proxy auth username
+    *                  proxy_pass     - Proxy auth password
+    *                  timeout        - Connection timeout in seconds.
+    *                  allowRedirects - Whether to follow redirects or not
+    *                  maxRedirects   - Max number of redirects to follow
     * @access public
     */
     function HTTP_Request($url, $params = array())
     {
-        $this->_url    =& new Net_URL($url);
-        $this->_sock   =& new Net_Socket();
-        $this->_method =  HTTP_REQUEST_METHOD_GET;
-        $this->_http   =  HTTP_REQUEST_HTTP_VER_1_1;
+        $this->setURL($url);
+
+        $this->_sock           = &new Net_Socket();
+        $this->_method         =  HTTP_REQUEST_METHOD_GET;
+        $this->_http           =  HTTP_REQUEST_HTTP_VER_1_1;
+        $this->_requestHeaders = array();
+        $this->_postData       = null;
 
         $this->_user = null;
         $this->_pass = null;
 
         $this->_proxy_host = null;
         $this->_proxy_port = null;
+        $this->_proxy_user = null;
+        $this->_proxy_pass = null;
 
-        $this->_timeout = null;
+        $this->_allowRedirects = true;
+        $this->_maxRedirects   = 3;
+        $this->_redirects      = 0;
+
+        $this->_timeout  = null;
+        $this->_response = null;
 
         foreach ($params as $key => $value) {
             $this->{'_' . $key} = $value;
         }
-
-		// If port is 80 and protocol is https, assume port 443 is to be used
-		// This does mean you can't send an https request to port 80 without
-		// some fudge. (mmm...)
-		if (strcasecmp($this->_url->protocol, 'https') == 0 AND $this->_url->port == 80) {
-			$this->_url->port = 443;
-		}
 
         // Default useragent
         $this->addHeader('User-Agent', 'PEAR HTTP_Request class ( http://pear.php.net/ )');
@@ -197,25 +226,69 @@ class HTTP_Request {
         // Host header
         if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
 
-			if ($this->_url->port != 80 AND strcasecmp($this->_url->protocol, 'http') == 0) {
-				$host = $this->_url->host . ':' . $this->_url->port;
+            $this->addHeader('Host', $this->_generateHostHeader());
 
-			} elseif ($this->_url->port != 443 AND strcasecmp($this->_url->protocol, 'https') == 0) {
-				$host = $this->_url->host . ':' . $this->_url->port;
+            if (extension_loaded('zlib')) {
+                $this->addHeader('Accept-Encoding', 'gzip');
+            }
+        }
+    }
+    
+    /**
+    * Generates a Host header for HTTP/1.1 requests
+    *
+    * @access private
+    */
+    function _generateHostHeader()
+    {
+        if ($this->_url->port != 80 AND strcasecmp($this->_url->protocol, 'http') == 0) {
+            $host = $this->_url->host . ':' . $this->_url->port;
 
-			} elseif ($this->_url->port == 443 AND strcasecmp($this->_url->protocol, 'https') == 0 AND strpos($url, ':443') !== false) {
-				$host = $this->_url->host . ':' . $this->_url->port;
-			
-			} else {
-				$host = $this->_url->host;
-			}
+        } elseif ($this->_url->port != 443 AND strcasecmp($this->_url->protocol, 'https') == 0) {
+            $host = $this->_url->host . ':' . $this->_url->port;
 
-            $this->addHeader('Host',  $host);
+        } elseif ($this->_url->port == 443 AND strcasecmp($this->_url->protocol, 'https') == 0 AND strpos($this->_url->url, ':443') !== false) {
+            $host = $this->_url->host . ':' . $this->_url->port;
+        
+        } else {
+            $host = $this->_url->host;
+        }
 
-	        if (extension_loaded('zlib')) {
-	            $this->addHeader('Accept-Encoding', 'gzip');
-	        }
-		}
+        return $host;
+    }
+    
+    /**
+    * Resets the object to its initial state.
+    * Takes the same parameters as the constructor.
+    *
+    * @param  string $url    The url to be requested
+    * @param  array  $params Associative array of parameters
+    *                        (see constructor for details)
+    * @access public
+    */
+    function reset($url, $params = array())
+    {
+        $this->HTTP_Request($url, $params);
+    }
+
+    /**
+    * Sets the URL to be requested
+    *
+    * @param  string $url The url to be requested
+    * @access public
+    */
+    function setURL($url)
+    {
+        $this->_url = &new Net_URL($url);
+
+        // If port is 80 and protocol is https, assume port 443 is to be used
+        // This does mean you can't send an https request to port 80 without
+        // some fudge. (mmm...)
+        if (strcasecmp($this->_url->protocol, 'https') == 0 AND $this->_url->port == 80) {
+            $this->_url->port = 443;
+        }
+
+        $this->addHeader('Host', $this->_generateHostHeader());
     }
     
     /**
@@ -355,6 +428,17 @@ class HTTP_Request {
     }
 
     /**
+    * Clears any postdata that has been added. Useful for
+    * multiple request scenarios.
+    *
+    * @access public
+    */
+    function clearPostData()
+    {
+        $this->_postData = null;
+    }
+
+    /**
     * Appends a cookie to "Cookie:" header
     * 
     * @param string $name cookie name
@@ -364,7 +448,18 @@ class HTTP_Request {
     function addCookie($name, $value)
     {
         $cookies = isset($this->_requestHeaders['Cookie']) ? $this->_requestHeaders['Cookie']. '; ' : '';
-		$this->addHeader('Cookie', $cookies . urlencode($name) . '=' . urlencode($value));
+        $this->addHeader('Cookie', $cookies . urlencode($name) . '=' . urlencode($value));
+    }
+    
+    /**
+    * Clears any cookies that have been added. Useful
+    * for multiple request scenarios
+    *
+    * @access public
+    */
+    function clearCookies()
+    {
+        $this->removeHeader('Cookie');
     }
 
     /**
@@ -378,20 +473,69 @@ class HTTP_Request {
         $host = isset($this->_proxy_host) ? $this->_proxy_host : $this->_url->host;
         $port = isset($this->_proxy_port) ? $this->_proxy_port : $this->_url->port;
 
-		// 4.3.0 supports SSL connections using OpenSSL. The function test determines
-		// we running on at least 4.3.0
-		if (strcasecmp($this->_url->protocol, 'https') == 0 AND function_exists('file_get_contents') AND extension_loaded('openssl')) {
-			$host = 'ssl://' . $host;
-		}
+        // 4.3.0 supports SSL connections using OpenSSL. The function test determines
+        // we running on at least 4.3.0
+        if (strcasecmp($this->_url->protocol, 'https') == 0 AND function_exists('file_get_contents') AND extension_loaded('openssl')) {
+            $host = 'ssl://' . $host;
+        }
 
+        // If this is a second request, we may get away without
+        // re-connecting if they're on the same server
         if (   PEAR::isError($err = $this->_sock->connect($host, $port, null, $this->_timeout))
             OR PEAR::isError($err = $this->_sock->write($this->_buildRequest())) ) {
 
            return $err;
         }
 
+        // Read the response
         if (PEAR::isError($err = $this->readResponse()) ) {
             return $err;
+        }
+
+        // Check for redirection
+        if (    $this->_allowRedirects
+            AND $this->_redirects <= $this->_maxRedirects
+            AND $this->getResponseCode() > 300
+            AND $this->getResponseCode() < 399
+            AND !empty($this->_response->_headers['Location'])) {
+
+            
+            $redirect = $this->_response->_headers['Location'];
+
+            // Absolute URL
+            if (preg_match('/^https?:\/\//i', $redirect)) {
+                $this->_url = &new Net_URL($redirect);
+
+            // Absolute path
+            } elseif ($redirect{0} == '/') {
+                $this->_url->path = $redirect;
+            
+            // Relative path
+            } elseif (substr($redirect, 0, 3) == '../' OR substr($redirect, 0, 2) == './') {
+                if (substr($this->_url->path, -1) == '/') {
+                    $redirect = $this->_url->path . $redirect;
+                } else {
+                    $redirect = dirname($this->_url->path) . '/' . $redirect;
+                }
+                $redirect = Net_URL::resolvePath($redirect);
+                $this->_url->path = $redirect;
+                
+            // Filename, no path
+            } else {
+                if (substr($this->_url->path, -1) == '/') {
+                    $redirect = $this->_url->path . $redirect;
+                } else {
+                    $redirect = dirname($this->_url->path) . '/' . $redirect;
+                }
+                $this->_url->path = $redirect;
+            }
+
+            $this->_redirects++;
+            return $this->sendRequest();
+
+        // Too many redirects
+        } elseif ($this->_allowRedirects AND $this->_redirects > $this->_maxRedirects) {
+            return PEAR::raiseError('Too many redirects');
         }
         
         return true;
@@ -423,6 +567,7 @@ class HTTP_Request {
     }
 
     /**
+    
     * Returns the body of the response
     *
     * @access public
@@ -510,8 +655,8 @@ class HTTP_Request {
 /**
 * Response class to complement the Request class
 */
-class HTTP_Response {
-
+class HTTP_Response
+{
     /**
     * Socket object
     * @var object
@@ -573,12 +718,12 @@ class HTTP_Response {
         unset($headers[0]);
         foreach ($headers as $value) {
             $headername   = substr($value, 0, strpos($value, ':'));
-			$headername_i = strtolower($headername);
+            $headername_i = strtolower($headername);
             $headervalue  = ltrim(substr($value, strpos($value, ':') + 1));
 
             if ('set-cookie' != $headername_i) {
                 $this->_headers[$headername] = $headervalue;
-				$this->_headers[$headername_i] = $headervalue;
+                $this->_headers[$headername_i] = $headervalue;
             } else {
                 // Parse a SetCookie header to fill _cookies array
                 $cookie = array(
@@ -591,15 +736,15 @@ class HTTP_Response {
                 // Only a name=value pair
                 if (!strpos($headervalue, ';')) {
                     list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $headervalue));
-					$cookie['name']  = urldecode($cookie['name']);
-					$cookie['value'] = urldecode($cookie['value']);
+                    $cookie['name']  = urldecode($cookie['name']);
+                    $cookie['value'] = urldecode($cookie['value']);
 
                 // Some optional parameters are supplied
                 } else {
                     $elements = explode(';', $headervalue);
                     list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $elements[0]));
-					$cookie['name']  = urldecode($cookie['name']);
-					$cookie['value'] = urldecode($cookie['value']);
+                    $cookie['name']  = urldecode($cookie['name']);
+                    $cookie['value'] = urldecode($cookie['value']);
 
                     for ($i = 1; $i < count($elements);$i++) {
                         list ($elName, $elValue) = array_map('trim', explode('=', $elements[$i]));
@@ -607,8 +752,8 @@ class HTTP_Response {
                             $cookie['secure'] = true;
                         } elseif ('expires' == $elName) {
                             $cookie['expires'] = str_replace('"', '', $elValue);
-						} elseif ('path' == $elName OR 'domain' == $elName) {
-							$cookie[$elName] = urldecode($elValue);
+                        } elseif ('path' == $elName OR 'domain' == $elName) {
+                            $cookie[$elName] = urldecode($elValue);
                         } else {
                             $cookie[$elName] = $elValue;
                         }
@@ -656,6 +801,5 @@ class HTTP_Response {
 
         return true;
     }
-}
-
+} // End class HTTP_Response
 ?>

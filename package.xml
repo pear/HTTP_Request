@@ -6,7 +6,7 @@
   <summary>Provides an easy way to perform HTTP requests</summary>
   <description>
 Supports GET/POST/HEAD/TRACE/PUT/DELETE, Basic authentication, Proxy,
-Proxy Authentication, SSL etc.
+Proxy Authentication, SSL, redirection etc.
   </description>
 
   <maintainers>
@@ -19,11 +19,11 @@ Proxy Authentication, SSL etc.
   </maintainers>
 
   <release>
-    <version>1.1.0</version>
-    <date>2003-01-20</date>
+    <version>1.1.1</version>
+    <date>2003-01-30</date>
     <state>stable</state>
     <license>BSD</license>
-    <notes>Added SSL support as long as you have PHP 4.3.0+ and the OpenSSL extension. Net_URL 1.0.6 is now required.</notes>
+    <notes>Added redirect support. Net_URL 1.0.7 is now required.</notes>
     <filelist>
       <dir name="/" baseinstalldir="HTTP">
         <file role="php" name="Request.php" />
@@ -33,12 +33,20 @@ Proxy Authentication, SSL etc.
       </dir>
     </filelist>
     <deps>
-      <dep type="pkg" rel="ge" version="1.0.6">Net_URL</dep>
+      <dep type="pkg" rel="ge" version="1.0.7">Net_URL</dep>
       <dep type="pkg" rel="ge" version="1.0">Net_Socket</dep>
     </deps>
   </release>
   
   <changelog>
+
+	<release>
+	    <version>1.1.0</version>
+	    <date>2003-01-20</date>
+	    <state>stable</state>
+	    <license>BSD</license>
+	    <notes>Added SSL support as long as you have PHP 4.3.0+ and the OpenSSL extension. Net_URL 1.0.6 is now required.</notes>
+	</release>
 
 	<release>
       <version>1.0.2</version>
