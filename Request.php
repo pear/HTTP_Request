@@ -734,6 +734,7 @@ class HTTP_Request {
     function readResponse()
     {
         $this->_response = &new HTTP_Response($this->_sock);
+        return $this->_response->process();
     }
 }
 
@@ -777,123 +778,177 @@ class HTTP_Response
     * Response body
     * @var string
     */
-    var $_body;
+    var $_body = '';
+
+   /**
+    * Used by _readChunked() to store its internal data
+    * @var string
+    */
+    var $_chunkBuffer = '';
 
     /**
     * Constructor
     *
-    * Reads the entire response, parse out the headers, and checks
-    * for chunked encoding.
-    *
+    * @param  object Net_Socket     socket to read the response from
     * @return mixed PEAR Error on error, true otherwise
     */
     function HTTP_Response(&$sock)
     {
-        // Fetch all
-        $response = $sock->readAll();
+        $this->_sock =& $sock;
+    }
 
-        if (PEAR::isError($response)) {
-            return $response;
-        }
 
-       // Handle badly formed headers "\n\n" from Netscape Enterprise Servers.
-       // Locate delimiter type by inspecting headers.
-       $delim = "\r\n";
-       $crnlcrnl = strpos($response, "\r\n\r\n");
-       $nlnl = strpos($response, "\n\n");
-       if (($crnlcrnl === false) || ($nlnl !== false && $nlnl < $crnlcrnl))
-           $delim = "\n";
-
-        // Sort out headers
-        $headers = substr($response, 0, strpos($response, "$delim$delim"));
-        $headers = explode($delim, $headers);
-
-        list($this->_protocol, $this->_code) = sscanf($headers[0], '%s %s');
-        unset($headers[0]);
-        foreach ($headers as $value) {
-            $headername   = substr($value, 0, strpos($value, ':'));
-            $headername_i = strtolower($headername);
-            $headervalue  = ltrim(substr($value, strpos($value, ':') + 1));
-
-            if ('set-cookie' != $headername_i) {
-                $this->_headers[$headername] = $headervalue;
-                $this->_headers[$headername_i] = $headervalue;
+   /**
+    * Processes a HTTP response
+    * 
+    * This extracts response code, headers, cookies and decodes body if it 
+    * was encoded in some way
+    *
+    * @access public
+    * @throws PEAR_Error
+    * @return mixed     true on success, PEAR_Error in case of malformd response
+    */
+    function process()
+    {
+        do {
+            $line = $this->_sock->readLine();
+            if (sscanf($line, 'HTTP/%s %s', $http_version, $returncode) != 2) {
+                return PEAR::raiseError('Malformed response.');
             } else {
-                // Parse a SetCookie header to fill _cookies array
-                $cookie = array(
-                    'expires' => null,
-                    'domain'  => null,
-                    'path'    => null,
-                    'secure'  => false
-                );
-
-                // Only a name=value pair
-                if (!strpos($headervalue, ';')) {
-                    list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $headervalue));
-                    $cookie['name']  = urldecode($cookie['name']);
-                    $cookie['value'] = urldecode($cookie['value']);
-
-                // Some optional parameters are supplied
-                } else {
-                    $elements = explode(';', $headervalue);
-                    list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $elements[0]));
-                    $cookie['name']  = urldecode($cookie['name']);
-                    $cookie['value'] = urldecode($cookie['value']);
-
-                    for ($i = 1; $i < count($elements);$i++) {
-                        list ($elName, $elValue) = array_map('trim', explode('=', $elements[$i]));
-                        if ('secure' == $elName) {
-                            $cookie['secure'] = true;
-                        } elseif ('expires' == $elName) {
-                            $cookie['expires'] = str_replace('"', '', $elValue);
-                        } elseif ('path' == $elName OR 'domain' == $elName) {
-                            $cookie[$elName] = urldecode($elValue);
-                        } else {
-                            $cookie[$elName] = $elValue;
-                        }
-                    }
-                }
-                $this->_cookies[] = $cookie;
+                $this->_protocol = 'HTTP/' . $http_version;
+                $this->_code     = intval($returncode);
             }
-
-        }
-
-        // Store body
-        $this->_body = substr($response, strpos($response, "$delim$delim") + 4);
-
-        // If response was chunked, parse it out
-        if (@$this->_headers['transfer-encoding'] == 'chunked') {
-            $body   = $this->_body;
-            $chunks = array();
-            while (true) {
-                $chunksize = 0;
-                $line = substr($body, 0, $pos = strpos($body, "$delim"));
-                $body = substr($body, $pos + 2);
-
-                if (preg_match('/^([0-9a-f]+)/i', $line, $matches)) {
-                    $chunksize = hexdec($matches[1]);
-                    if ($chunksize > 0) {
-                        $chunks[] = substr($body, 0, $chunksize);
-                        $body = substr($body, $chunksize + 2); // Plus trailing CRLF
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
+            while ('' !== ($header = $this->_sock->readLine())) {
+                $this->_processHeader($header);
             }
-            
-            // Save chunks to $this->_body
-            $this->_body = implode('', $chunks);
+        } while (100 == $this->_code);
+
+        if ($this->_sock->eof()) {
+            return true;
         }
 
-        // If response was compressed using gzip, uncompress it
-        if (@$this->_headers['content-encoding'] == 'gzip') {
-            $body = substr($this->_body, 10);
-            $this->_body = gzinflate($body);
+        // If response body is present, read it and decode
+        $chunked = isset($this->_headers['transfer-encoding']) && ('chunked' == $this->_headers['transfer-encoding']);
+        $gzipped = isset($this->_headers['content-encoding']) && ('gzip' == $this->_headers['content-encoding']);
+        while (!$this->_sock->eof()) {
+            if ($chunked) {
+                $data = $this->_readChunked(4096);
+            } else {
+                $data = $this->_sock->read(4096);
+            }
+            $this->_body .= $data;
         }
-
+        // Uncompress the body if needed
+        if ($gzipped) {
+            $this->_body = gzinflate(substr($this->_body, 10));
+        }
         return true;
+    }
+
+
+   /**
+    * Processes the response header
+    *
+    * @access private
+    * @param  string    HTTP header
+    */
+    function _processHeader($header)
+    {
+        list($headername, $headervalue) = explode(':', $header, 2);
+        $headername_i = strtolower($headername);
+        $headervalue  = ltrim($headervalue);
+        
+        if ('set-cookie' != $headername_i) {
+            $this->_headers[$headername]   = $headervalue;
+            $this->_headers[$headername_i] = $headervalue;
+        } else {
+            $this->_parseCookie($headervalue);
+        }
+    }
+
+
+   /**
+    * Parse a Set-Cookie header to fill $_cookies array
+    *
+    * @access private
+    * @param  string    value of Set-Cookie header
+    */
+    function _parseCookie($headervalue)
+    {
+        $cookie = array(
+            'expires' => null,
+            'domain'  => null,
+            'path'    => null,
+            'secure'  => false
+        );
+
+        // Only a name=value pair
+        if (!strpos($headervalue, ';')) {
+            list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $headervalue));
+            $cookie['name']  = urldecode($cookie['name']);
+            $cookie['value'] = urldecode($cookie['value']);
+
+        // Some optional parameters are supplied
+        } else {
+            $elements = explode(';', $headervalue);
+            list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $elements[0]));
+            $cookie['name']  = urldecode($cookie['name']);
+            $cookie['value'] = urldecode($cookie['value']);
+
+            for ($i = 1; $i < count($elements);$i++) {
+                list ($elName, $elValue) = array_map('trim', explode('=', $elements[$i]));
+                if ('secure' == $elName) {
+                    $cookie['secure'] = true;
+                } elseif ('expires' == $elName) {
+                    $cookie['expires'] = str_replace('"', '', $elValue);
+                } elseif ('path' == $elName OR 'domain' == $elName) {
+                    $cookie[$elName] = urldecode($elValue);
+                } else {
+                    $cookie[$elName] = $elValue;
+                }
+            }
+        }
+        $this->_cookies[] = $cookie;
+    }
+
+
+   /**
+    * Read a part of response body encoded with chunked Transfer-Encoding
+    * 
+    * @access private
+    * @param  int   number of bytes to read
+    * @return string
+    */
+    function _readChunked($size)
+    {
+        while (true) {
+            // check if there's enough in the buffer to return it without
+            // reading additional chunks
+            if ($size <= strlen($this->_chunkBuffer)) {
+                $tmp = substr($this->_chunkBuffer, 0, $size);
+                $this->_chunkBuffer = substr($this->_chunkBuffer, $size);
+                return $tmp;
+
+            // not enough in the buffer, but eof - supply the rest of the buffer
+            } elseif ($this->_sock->eof()) {
+                $tmp = $this->_chunkBuffer;
+                $this->_chunkBuffer = '';
+                return $tmp;
+            }
+
+            // read next chunk to fill the buffer
+            $line = $this->_sock->readLine();
+            if (preg_match('/^([0-9a-f]+)/i', $line, $matches)) {
+                $chunkSize = hexdec($matches[1]); 
+                // Chunk with zero length indicates the end
+                if (0 == $chunkSize) {
+                    $this->_sock->readAll(); // make this an eof()
+                    continue;
+                }
+                $this->_chunkBuffer .= $this->_sock->read($chunkSize);
+                $this->_sock->readLine(); // Trailing CRLF
+            }
+        }
     }
 } // End class HTTP_Response
 ?>
