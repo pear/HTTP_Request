@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="ISO-8859-1" ?>
-<package>
+<!DOCTYPE package SYSTEM "../package.dtd">
+<package version="1.0">
   <name>HTTP_Request</name>
   <summary>Provides an easy way to perform HTTP requests</summary>
   <description>
-	Supports GET/POST/HEAD/TRACE/PUT/DELETE, Basic authentication, Proxy,
-	Proxy Authentication etc.
+    Supports GET/POST/HEAD/TRACE/PUT/DELETE, Basic authentication, Proxy,
+    Proxy Authentication etc.
   </description>
   <maintainers>
-      <maintainer>
-        <user>heyesr</user>
-        <name>Richard Heyes</name>
-        <email>heyesr@php.net</email>
-        <role>lead</role>
-      </maintainer>
+    <maintainer>
+      <user>heyesr</user>
+      <name>Richard Heyes</name>
+      <email>heyesr@php.net</email>
+      <role>lead</role>
+    </maintainer>
   </maintainers>
   <release>
     <version>1.0</version>
@@ -25,7 +26,7 @@
       <dir name="/" baseinstalldir="HTTP">
         <file role="php">Request.php</file>
         <dir name="docs" role="doc">
-            <file>example.php</file>
+	  <file>example.php</file>
         </dir>
       </dir>
     </filelist>
