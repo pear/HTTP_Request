@@ -25,11 +25,49 @@ Proxy Authentication, SSL, file uploads etc.
   </maintainers>
 
   <release>
-    <version>1.2</version>
-    <date>2003-10-27</date>
+    <version>1.2.1</version>
+    <date>2004-04-29</date>
     <state>stable</state>
     <license>BSD</license>
     <notes>
+Additions and changes:
+ * Applied patch from #851 (First parameter of constructor is now optional)
+ * Implemented #526 (It is now possible to set timeout on socket, via
+   parameter readTimeout)
+ * Implemented #1141 (It is now possible to pass options to socket via 
+   parameter socketOptions, Net_Socket 1.0.2 is needed for this functionality)
+ 
+Fixes:
+ * Fixed #842 (Doc comments incorrectly described the possible return values)
+ * Fixed #1152 (Incorrect handling of cookies with '=' in value)
+ * Fixed #1158 (Cookie parameters are not necessarily lowercase)
+ * Fixed #1080 (Cookies should not be urlencoded/urldecoded)
+    </notes>
+    <filelist>
+      <dir name="/" baseinstalldir="HTTP">
+        <file role="php">Request.php</file>
+        <dir name="Request">
+          <file role="php">Listener.php</file>
+        </dir>
+        <dir name="docs" role="doc">
+          <file role="doc">example.php</file>
+          <file role="doc">download-progress.php</file>
+        </dir>
+      </dir>
+    </filelist>
+    <deps>
+      <dep type="pkg" rel="ge" version="1.0.7">Net_URL</dep>
+      <dep type="pkg" rel="ge" version="1.0.2">Net_Socket</dep>
+    </deps>
+  </release>
+  
+  <changelog>
+    <release>
+      <version>1.2</version>
+      <date>2003-10-27</date>
+      <state>stable</state>
+      <license>BSD</license>
+      <notes>
 Feature additions:
  * Support for multipart/form-data POST requests and file uploads (partly based on Christian Stocker's work)
  * Brackets [] after array variables are optional (on by default, controlled by useBrackets parameter)
@@ -48,26 +86,8 @@ Fixes:
  * Fixed PHP bug #25486 (100 Continue handling)
  * Fixed PEAR bug #150 (Notices being generated)
  * Fixed problems with HTTP responses without bodies
-    </notes>
-    <filelist>
-      <dir name="/" baseinstalldir="HTTP">
-        <file role="php">Request.php</file>
-        <dir name="Request">
-          <file role="php">Listener.php</file>
-        </dir>
-        <dir name="docs" role="doc">
-          <file role="doc">example.php</file>
-          <file role="doc">download-progress.php</file>
-        </dir>
-      </dir>
-    </filelist>
-    <deps>
-      <dep type="pkg" rel="ge" version="1.0.7">Net_URL</dep>
-      <dep type="pkg" rel="ge" version="1.0">Net_Socket</dep>
-    </deps>
-  </release>
-  
-  <changelog>
+      </notes>
+	</release>
     <release>
       <version>1.1.1</version>
       <date>2003-01-30</date>

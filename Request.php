@@ -43,8 +43,9 @@
 // echo $a->getResponseBody();
 //
 
-require_once('Net/Socket.php');
-require_once('Net/URL.php');
+require_once 'PEAR.php';
+require_once 'Net/Socket.php';
+require_once 'Net/URL.php';
 
 define('HTTP_REQUEST_METHOD_GET',     'GET',     true);
 define('HTTP_REQUEST_METHOD_HEAD',    'HEAD',    true);
@@ -184,6 +185,18 @@ class HTTP_Request {
     * @var bool
     */
     var $_saveBody = true;
+
+   /**
+    * Timeout for reading from socket (array(seconds, microseconds))
+    * @var array
+    */
+    var $_readTimeout = null;
+
+   /**
+    * Options to pass to Net_Socket::connect. See stream_context_create
+    * @var array
+    */
+    var $_socketOptions = null;
 
     /**
     * Constructor
@@ -551,10 +564,13 @@ class HTTP_Request {
 
         // If this is a second request, we may get away without
         // re-connecting if they're on the same server
-        if (   PEAR::isError($err = $this->_sock->connect($host, $port, null, $this->_timeout))
-            OR PEAR::isError($err = $this->_sock->write($this->_buildRequest())) ) {
+        if (PEAR::isError($err = $this->_sock->connect($host, $port, null, $this->_timeout, $this->_socketOptions)) ||
+            PEAR::isError($err = $this->_sock->write($this->_buildRequest()))) {
 
-           return $err;
+            return $err;
+        }
+        if (!empty($this->_readTimeout)) {
+            $this->_sock->setTimeout($this->_readTimeout[0], $this->_readTimeout[1]);
         }
 
         $this->_notify('sentRequest');
