@@ -493,14 +493,16 @@ class HTTP_Request {
         }
 
         // Check for redirection
+        // Bugfix (PEAR) bug #18, 6 oct 2003 by Dave Mertens (headers are also stored lowercase, so we're gonna use them here)
+        // some non RFC2616 compliant servers (scripts) are returning lowercase headers ('location: xxx')
         if (    $this->_allowRedirects
             AND $this->_redirects <= $this->_maxRedirects
             AND $this->getResponseCode() > 300
             AND $this->getResponseCode() < 399
-            AND !empty($this->_response->_headers['Location'])) {
+            AND !empty($this->_response->_headers['location'])) {
 
             
-            $redirect = $this->_response->_headers['Location'];
+            $redirect = $this->_response->_headers['location'];
 
             // Absolute URL
             if (preg_match('/^https?:\/\//i', $redirect)) {
