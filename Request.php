@@ -62,7 +62,7 @@ class HTTP_Request {
 
     /**
     * Instance of Net_URL
-    * @var object    
+    * @var object Net_URL
     */
     var $_url;
 
@@ -98,7 +98,7 @@ class HTTP_Request {
 
     /**
     * Socket object
-    * @var object
+    * @var object Net_Socket
     */
     var $_sock;
     
@@ -140,13 +140,13 @@ class HTTP_Request {
 
     /**
     * Connection timeout.
-    * @var integer
+    * @var float
     */
     var $_timeout;
     
     /**
     * HTTP_Response object
-    * @var object
+    * @var object HTTP_Response
     */
     var $_response;
     
@@ -202,21 +202,25 @@ class HTTP_Request {
     * Constructor
     *
     * Sets up the object
-    * @param $url The url to fetch/access
-    * @param $params Associative array of parameters which can be:
-    *                  method         - Method to use, GET, POST etc
-    *                  http           - HTTP Version to use, 1.0 or 1.1
-    *                  user           - Basic Auth username
-    *                  pass           - Basic Auth password
-    *                  proxy_host     - Proxy server host
-    *                  proxy_port     - Proxy server port
-    *                  proxy_user     - Proxy auth username
-    *                  proxy_pass     - Proxy auth password
-    *                  timeout        - Connection timeout in seconds.
-    *                  allowRedirects - Whether to follow redirects or not
-    *                  maxRedirects   - Max number of redirects to follow
-    *                  useBrackets    - Whether to append [] to array variable names
-    *                  saveBody       - Whether to save response body in response object property
+    * @param    string  The url to fetch/access
+    * @param    array   Associative array of parameters which can have the following keys:
+    * <ul>
+    *   <li>method         - Method to use, GET, POST etc (string)</li>
+    *   <li>http           - HTTP Version to use, 1.0 or 1.1 (string)</li>
+    *   <li>user           - Basic Auth username (string)</li>
+    *   <li>pass           - Basic Auth password (string)</li>
+    *   <li>proxy_host     - Proxy server host (string)</li>
+    *   <li>proxy_port     - Proxy server port (integer)</li>
+    *   <li>proxy_user     - Proxy auth username (string)</li>
+    *   <li>proxy_pass     - Proxy auth password (string)</li>
+    *   <li>timeout        - Connection timeout in seconds (float)</li>
+    *   <li>allowRedirects - Whether to follow redirects or not (bool)</li>
+    *   <li>maxRedirects   - Max number of redirects to follow (integer)</li>
+    *   <li>useBrackets    - Whether to append [] to array variable names (bool)</li>
+    *   <li>saveBody       - Whether to save response body in response object property (bool)</li>
+    *   <li>readTimeout    - Timeout for reading / writing data over the socket (array (seconds, microseconds))</li>
+    *   <li>socketOptions  - Options to pass to Net_Socket object (array)</li>
+    * </ul>
     * @access public
     */
     function HTTP_Request($url = '', $params = array())
@@ -1068,7 +1072,12 @@ class HTTP_Response
             $cookie['value'] = trim(substr($elements[0], $pos + 1));
 
             for ($i = 1; $i < count($elements); $i++) {
-                list ($elName, $elValue) = array_map('trim', explode('=', $elements[$i]));
+                if (false === strpos($elements[$i], '=')) {
+                    $elName  = trim($elements[$i]);
+                    $elValue = null;
+                } else {
+                    list ($elName, $elValue) = array_map('trim', explode('=', $elements[$i]));
+                }
                 $elName = strtolower($elName);
                 if ('secure' == $elName) {
                     $cookie['secure'] = true;
@@ -1103,6 +1112,8 @@ class HTTP_Response
                     $this->_sock->readAll(); // make this an eof()
                     return '';
                 }
+            } elseif ($this->_sock->eof()) {
+                return '';
             }
         }
         $data = $this->_sock->read($this->_chunkLength);
