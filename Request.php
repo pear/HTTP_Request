@@ -1,6 +1,6 @@
 <?php
 // +-----------------------------------------------------------------------+
-// | Copyright (c) 2002-2003, Richard Heyes                                     |
+// | Copyright (c) 2002-2003, Richard Heyes                                |
 // | All rights reserved.                                                  |
 // |                                                                       |
 // | Redistribution and use in source and binary forms, with or without    |
@@ -172,6 +172,12 @@ class HTTP_Request {
     * @var bool
     */
     var $_useBrackets = true;
+
+   /**
+    * Attached listeners
+    * @var array
+    */
+    var $_listeners = array();
 
     /**
     * Constructor
@@ -506,9 +512,11 @@ class HTTP_Request {
     * Sends the request
     *
     * @access public
+    * @param  bool   Whether to store response body in Response object property,
+    *                set this to false if downloading a LARGE file and using a Listener
     * @return mixed  PEAR error on error, true otherwise
     */
-    function sendRequest()
+    function sendRequest($saveBody = true)
     {
         $host = isset($this->_proxy_host) ? $this->_proxy_host : $this->_url->host;
         $port = isset($this->_proxy_port) ? $this->_proxy_port : $this->_url->port;
@@ -527,8 +535,10 @@ class HTTP_Request {
            return $err;
         }
 
+        $this->_notify('sentRequest');
+
         // Read the response
-        if (PEAR::isError($err = $this->readResponse()) ) {
+        if (PEAR::isError($err = $this->readResponse($saveBody)) ) {
             return $err;
         }
 
@@ -573,7 +583,7 @@ class HTTP_Request {
             }
 
             $this->_redirects++;
-            return $this->sendRequest();
+            return $this->sendRequest($saveBody);
 
         // Too many redirects
         } elseif ($this->_allowRedirects AND $this->_redirects > $this->_maxRedirects) {
@@ -729,12 +739,72 @@ class HTTP_Request {
     /**
     * Initiates reading of the response
     *
+    * @param  bool
     * @access private
     */
-    function readResponse()
+    function readResponse($saveBody)
     {
-        $this->_response = &new HTTP_Response($this->_sock);
-        return $this->_response->process();
+        $this->_response = &new HTTP_Response($this->_sock, $this->_listeners);
+        return $this->_response->process($saveBody);
+    }
+
+
+   /**
+    * Adds a Listener to the list of listeners that are notified of
+    * the object's events
+    * 
+    * @param    object   HTTP_Request_Listener instance to attach
+    * @return   boolean  whether the listener was successfully attached
+    * @access   public
+    */
+    function attach(&$listener)
+    {
+        if (!is_a($listener, 'HTTP_Request_Listener')) {
+            return false;
+        }
+        $this->_listeners[$listener->_id] =& $listener;
+        return true;
+    }
+
+
+   /**
+    * Removes a Listener from the list of listeners 
+    * 
+    * @param    object   HTTP_Request_Listener instance to detach
+    * @return   boolean  whether the listener was successfully detached
+    * @access   public
+    */
+    function detach(&$listener)
+    {
+        if (!is_a($listener, 'HTTP_Request_Listener') || 
+            !isset($this->_listeners[$listener->_id])) {
+            return false;
+        }
+        unset($this->_listeners[$listener->_id]);
+        return true;
+    }
+
+
+   /**
+    * Notifies all registered listeners of an event.
+    * 
+    * Events sent by HTTP_Request object
+    * 'sentRequest': after the request was sent
+    * Events sent by HTTP_Response object
+    * 'gotHeaders': after receiving response headers (headers are passed in $data)
+    * 'tick': on receiving a part of response body (the part is passed in $data)
+    * 'gzTick': on receiving a gzip-encoded part of response body (ditto)
+    * 'gotBody': after receiving the response body (passes the decoded body in $data if it was gzipped)
+    * 
+    * @param    string  Event name
+    * @param    mixed   Additional data
+    * @access   private
+    */
+    function _notify($event, $data = null)
+    {
+        foreach (array_keys($this->_listeners) as $id) {
+            $this->_listeners[$id]->update($this, $event, $data);
+        }
     }
 }
 
@@ -786,15 +856,23 @@ class HTTP_Response
     */
     var $_chunkLength = 0;
 
+   /**
+    * Attached listeners
+    * @var array
+    */
+    var $_listeners = array();
+
     /**
     * Constructor
     *
     * @param  object Net_Socket     socket to read the response from
+    * @param  array                 listeners attached to request
     * @return mixed PEAR Error on error, true otherwise
     */
-    function HTTP_Response(&$sock)
+    function HTTP_Response(&$sock, &$listeners)
     {
-        $this->_sock =& $sock;
+        $this->_sock      =& $sock;
+        $this->_listeners =& $listeners;
     }
 
 
@@ -805,10 +883,13 @@ class HTTP_Response
     * was encoded in some way
     *
     * @access public
+    * @param  bool      Whether to store response body in object property, set
+    *                   this to false if downloading a LARGE file and using a Listener.
+    *                   This is assumed to be true if body is gzip-encoded.
     * @throws PEAR_Error
-    * @return mixed     true on success, PEAR_Error in case of malformd response
+    * @return mixed     true on success, PEAR_Error in case of malformed response
     */
-    function process()
+    function process($saveBody = true)
     {
         do {
             $line = $this->_sock->readLine();
@@ -823,6 +904,8 @@ class HTTP_Response
             }
         } while (100 == $this->_code);
 
+        $this->_notify('gotHeaders', $this->_headers);
+
         if ($this->_sock->eof()) {
             return true;
         }
@@ -836,11 +919,17 @@ class HTTP_Response
             } else {
                 $data = $this->_sock->read(4096);
             }
-            $this->_body .= $data;
+            if ($saveBody || $gzipped) {
+                $this->_body .= $data;
+            }
+            $this->_notify($gzipped? 'gzTick': 'tick', $data);
         }
         // Uncompress the body if needed
         if ($gzipped) {
             $this->_body = gzinflate(substr($this->_body, 10));
+            $this->_notify('gotBody', $this->_body);
+        } else {
+            $this->_notify('gotBody');
         }
         return true;
     }
@@ -938,6 +1027,22 @@ class HTTP_Response
             $this->_sock->readLine(); // Trailing CRLF
         }
         return $data;
+    }
+
+
+   /**
+    * Notifies all registered listeners of an event.
+    * 
+    * @param    string  Event name
+    * @param    mixed   Additional data
+    * @access   private
+    * @see HTTP_Request::_notify()
+    */
+    function _notify($event, $data = null)
+    {
+        foreach (array_keys($this->_listeners) as $id) {
+            $this->_listeners[$id]->update($this, $event, $data);
+        }
     }
 } // End class HTTP_Response
 ?>
