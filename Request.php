@@ -108,12 +108,12 @@ class HTTP_Request {
     */
     var $_postData;
 
-	/**
-	* Connection timeout.
-	* @var integer
-	*/
-	var $_timeout;
-	
+    /**
+    * Connection timeout.
+    * @var integer
+    */
+    var $_timeout;
+
     /**
     * Constructor
     *
@@ -128,7 +128,7 @@ class HTTP_Request {
     *                  proxy_port - Proxy server port
     *                  proxy_user - Proxy auth username
     *                  proxy_pass - Proxy auth password
-	*				   timeout    - Connection timeout in seconds.
+	*                  timeout    - Connection timeout in seconds.
     * @access public
     */
     function HTTP_Request($url, $params = array())
@@ -144,7 +144,7 @@ class HTTP_Request {
         $this->_proxy_host = null;
         $this->_proxy_port = null;
 
-		$this->_timeout = null;
+        $this->_timeout = null;
 
         foreach ($params as $key => $value) {
             $this->{'_' . $key} = $value;
