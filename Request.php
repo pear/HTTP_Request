@@ -906,30 +906,32 @@ class HTTP_Response
 
         $this->_notify('gotHeaders', $this->_headers);
 
-        if ($this->_sock->eof()) {
-            return true;
-        }
-
         // If response body is present, read it and decode
         $chunked = isset($this->_headers['transfer-encoding']) && ('chunked' == $this->_headers['transfer-encoding']);
         $gzipped = isset($this->_headers['content-encoding']) && ('gzip' == $this->_headers['content-encoding']);
+        $hasBody = false;
         while (!$this->_sock->eof()) {
             if ($chunked) {
                 $data = $this->_readChunked();
             } else {
                 $data = $this->_sock->read(4096);
             }
-            if ($saveBody || $gzipped) {
-                $this->_body .= $data;
+            if ('' != $data) {
+                $hasBody = true;
+                if ($saveBody || $gzipped) {
+                    $this->_body .= $data;
+                }
+                $this->_notify($gzipped? 'gzTick': 'tick', $data);
             }
-            $this->_notify($gzipped? 'gzTick': 'tick', $data);
         }
-        // Uncompress the body if needed
-        if ($gzipped) {
-            $this->_body = gzinflate(substr($this->_body, 10));
-            $this->_notify('gotBody', $this->_body);
-        } else {
-            $this->_notify('gotBody');
+        if ($hasBody) {
+            // Uncompress the body if needed
+            if ($gzipped) {
+                $this->_body = gzinflate(substr($this->_body, 10));
+                $this->_notify('gotBody', $this->_body);
+            } else {
+                $this->_notify('gotBody');
+            }
         }
         return true;
     }
