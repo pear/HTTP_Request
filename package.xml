@@ -19,11 +19,11 @@ Proxy Authentication etc.
   </maintainers>
 
   <release>
-    <version>1.0.1</version>
-    <date>2002-07-27</date>
+    <version>1.0.2</version>
+    <date>2002-09-16</date>
     <state>stable</state>
     <license>BSD</license>
-    <notes>License change</notes>
+    <notes>Added cookie support</notes>
     <filelist>
       <dir name="/" baseinstalldir="HTTP">
         <file role="php" name="Request.php" />
@@ -39,6 +39,14 @@ Proxy Authentication etc.
   </release>
   
   <changelog>
+
+  	<release>
+	  <version>1.0.1</version>
+	  <date>2002-07-27</date>
+	  <state>stable</state>
+	  <license>BSD</license>
+ 	  <notes>License change</notes>
+	</release>
 
     <release>
       <version>1.0</version>
