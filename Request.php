@@ -190,7 +190,11 @@ class HTTP_Request {
         // Host header
         if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
             $this->addHeader('Host', $this->_url->host);
-        }
+
+	        if (extension_loaded('zlib')) {
+	            $this->addHeader('Accept-Encoding', 'gzip');
+	        }
+		}
     }
     
     /**
@@ -207,7 +211,7 @@ class HTTP_Request {
         $this->_proxy_host = $host;
         $this->_proxy_port = $port;
         $this->_proxy_user = $user;
-        $this->_proxy_port = $port;
+        $this->_proxy_pass = $pass;
 
         if (!empty($user)) {
             $this->addHeader('Proxy-Authorization', 'Basic ' . base64_encode($user . ':' . $pass));
@@ -518,7 +522,7 @@ class HTTP_Response {
     {
         // Fetch all
         $response = $sock->readAll();
-        
+
         if (PEAR::isError($response)) {
             return $response;
         }
@@ -530,11 +534,13 @@ class HTTP_Response {
         list($this->_protocol, $this->_code) = sscanf($headers[0], '%s %s');
         unset($headers[0]);
         foreach ($headers as $value) {
-            $headername  = substr($value, 0, strpos($value, ':'));
-            $headervalue = ltrim(substr($value, strpos($value, ':') + 1));
+            $headername   = substr($value, 0, strpos($value, ':'));
+			$headername_i = strtolower($headername);
+            $headervalue  = ltrim(substr($value, strpos($value, ':') + 1));
 
-            if ('Set-Cookie' != $headername) {
+            if ('set-cookie' != $headername_i) {
                 $this->_headers[$headername] = $headervalue;
+				$this->_headers[$headername_i] = $headervalue;
             } else {
                 // Parse a SetCookie header to fill _cookies array
                 $cookie = array(
@@ -579,7 +585,7 @@ class HTTP_Response {
         $this->_body = substr($response, strpos($response, "\r\n\r\n") + 4);
 
         // If response was chunked, parse it out
-        if (@$this->_headers['Transfer-Encoding'] == 'chunked') {
+        if (@$this->_headers['transfer-encoding'] == 'chunked') {
             $body   = $this->_body;
             $chunks = array();
             while (true) {
@@ -603,7 +609,13 @@ class HTTP_Response {
             // Save chunks to $this->_body
             $this->_body = implode('', $chunks);
         }
-        
+
+        // If response was compressed using gzip, uncompress it
+        if (@$this->_headers['content-encoding'] == 'gzip') {
+            $body = substr($this->_body, 10);
+            $this->_body = gzinflate($body);
+        }
+
         return true;
     }
 }
