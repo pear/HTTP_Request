@@ -316,6 +316,10 @@ class HTTP_Request {
     {
         $this->_url = &new Net_URL($url, $this->_useBrackets);
 
+        if (!empty($this->_url->user) || !empty($this->_url->pass)) {
+            $this->setBasicAuth($this->_url->user, $this->_url->pass);
+        }
+
         if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
             $this->addHeader('Host', $this->_generateHostHeader());
         }
