@@ -507,7 +507,7 @@ class HTTP_Request {
     function addCookie($name, $value)
     {
         $cookies = isset($this->_requestHeaders['Cookie']) ? $this->_requestHeaders['Cookie']. '; ' : '';
-        $this->addHeader('Cookie', $cookies . urlencode($name) . '=' . urlencode($value));
+        $this->addHeader('Cookie', $cookies . $name . '=' . $value);
     }
     
     /**
@@ -990,24 +990,25 @@ class HTTP_Response
 
         // Only a name=value pair
         if (!strpos($headervalue, ';')) {
-            list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $headervalue));
-            $cookie['name']  = urldecode($cookie['name']);
-            $cookie['value'] = urldecode($cookie['value']);
+            $pos = strpos($headervalue, '=');
+            $cookie['name']  = trim(substr($headervalue, 0, $pos));
+            $cookie['value'] = trim(substr($headervalue, $pos + 1));
 
         // Some optional parameters are supplied
         } else {
             $elements = explode(';', $headervalue);
-            list($cookie['name'], $cookie['value']) = array_map('trim', explode('=', $elements[0]));
-            $cookie['name']  = urldecode($cookie['name']);
-            $cookie['value'] = urldecode($cookie['value']);
+            $pos = strpos($elements[0], '=');
+            $cookie['name']  = trim(substr($elements[0], 0, $pos));
+            $cookie['value'] = trim(substr($elements[0], $pos + 1));
 
-            for ($i = 1; $i < count($elements);$i++) {
+            for ($i = 1; $i < count($elements); $i++) {
                 list ($elName, $elValue) = array_map('trim', explode('=', $elements[$i]));
+                $elName = strtolower($elName);
                 if ('secure' == $elName) {
                     $cookie['secure'] = true;
                 } elseif ('expires' == $elName) {
                     $cookie['expires'] = str_replace('"', '', $elValue);
-                } elseif ('path' == $elName OR 'domain' == $elName) {
+                } elseif ('path' == $elName || 'domain' == $elName) {
                     $cookie[$elName] = urldecode($elValue);
                 } else {
                     $cookie[$elName] = $elValue;
