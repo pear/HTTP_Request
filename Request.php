@@ -505,7 +505,7 @@ class HTTP_Request {
             // Absolute URL
             if (preg_match('/^https?:\/\//i', $redirect)) {
                 $this->_url = &new Net_URL($redirect);
-
+                $this->addHeader('Host', $this->_generateHostHeader());
             // Absolute path
             } elseif ($redirect{0} == '/') {
                 $this->_url->path = $redirect;
