@@ -253,9 +253,6 @@ class HTTP_Request {
         // Default useragent
         $this->addHeader('User-Agent', 'PEAR HTTP_Request class ( http://pear.php.net/ )');
 
-        // Default Content-Type
-        $this->addHeader('Content-Type', 'application/x-www-form-urlencoded');
-
         // Make sure keepalives dont knobble us
         $this->addHeader('Connection', 'close');
 
@@ -319,12 +316,6 @@ class HTTP_Request {
     {
         $this->_url = &new Net_URL($url, $this->_useBrackets);
 
-        // If port is 80 and protocol is https, assume port 443 is to be used
-        // This does mean you can't send an https request to port 80 without
-        // some fudge. (mmm...)
-        if (strcasecmp($this->_url->protocol, 'https') == 0 AND $this->_url->port == 80) {
-            $this->_url->port = 443;
-        }
         if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
             $this->addHeader('Host', $this->_generateHostHeader());
         }
@@ -460,26 +451,26 @@ class HTTP_Request {
     * This also changes content-type to 'multipart/form-data' for proper upload
     * 
     * @access public
-    * @param  string    variable name
+    * @param  string    name of file-upload field
     * @param  mixed     file name(s)
     * @param  mixed     content-type(s) of file(s) being uploaded
     * @return bool      true on success
     * @throws PEAR_Error
     */
-    function addFile($name, $filename, $contentType = 'application/octet-stream')
+    function addFile($inputName, $fileName, $contentType = 'application/octet-stream')
     {
-        if (!is_array($filename) && !is_readable($filename)) {
-            return PEAR::raiseError("File '{$filename}' is not readable");
-        } elseif (is_array($filename)) {
-            foreach ($filename as $name) {
+        if (!is_array($fileName) && !is_readable($fileName)) {
+            return PEAR::raiseError("File '{$fileName}' is not readable");
+        } elseif (is_array($fileName)) {
+            foreach ($fileName as $name) {
                 if (!is_readable($name)) {
                     return PEAR::raiseError("File '{$name}' is not readable");
                 }
             }
         }
         $this->addHeader('Content-Type', 'multipart/form-data');
-        $this->_postFiles[$name] = array(
-            'name' => $filename,
+        $this->_postFiles[$inputName] = array(
+            'name' => $fileName,
             'type' => $contentType
         );
         return true;
@@ -699,9 +690,16 @@ class HTTP_Request {
 
         $request = $this->_method . ' ' . $url . ' HTTP/' . $this->_http . "\r\n";
 
-        if ('multipart/form-data' == $this->_requestHeaders['Content-Type']) {
-            $boundary = 'HTTP_Request_' . md5(uniqid('request') . microtime());
-            $this->addHeader('Content-Type', 'multipart/form-data; boundary=' . $boundary);
+        if (HTTP_REQUEST_METHOD_POST != $this->_method && HTTP_REQUEST_METHOD_PUT != $this->_method) {
+            $this->removeHeader('Content-Type');
+        } else {
+            if (empty($this->_requestHeaders['Content-Type'])) {
+                // Add default content-type
+                $this->addHeader('Content-Type', 'application/x-www-form-urlencoded');
+            } elseif ('multipart/form-data' == $this->_requestHeaders['Content-Type']) {
+                $boundary = 'HTTP_Request_' . md5(uniqid('request') . microtime());
+                $this->addHeader('Content-Type', 'multipart/form-data; boundary=' . $boundary);
+            }
         }
 
         // Request Headers
@@ -711,22 +709,29 @@ class HTTP_Request {
             }
         }
 
+        // No post data or wrong method, so simply add a final CRLF
+        if ((HTTP_REQUEST_METHOD_POST != $this->_method && HTTP_REQUEST_METHOD_PUT != $this->_method) ||
+            (empty($this->_postData) && empty($this->_postFiles))) {
+
+            $request .= "\r\n";
         // Post data if it's an array
-        if ((!empty($this->_postData) && is_array($this->_postData)) || !empty($this->_postFiles)) {
+        } elseif ((!empty($this->_postData) && is_array($this->_postData)) || !empty($this->_postFiles)) {
             // multipart request, probably with file uploads
             if (isset($boundary)) {
                 $postdata = '';
-                foreach ($this->_postData as $name => $value) {
-                    if (is_array($value)) {
-                        foreach ($value as $k => $v) {
+                if (!empty($this->_postData)) {
+                    foreach ($this->_postData as $name => $value) {
+                        if (is_array($value)) {
+                            foreach ($value as $k => $v) {
+                                $postdata .= '--' . $boundary . "\r\n";
+                                $postdata .= 'Content-Disposition: form-data; name="' . $name . ($this->_useBrackets? '[' . $k . ']': '') . '"';
+                                $postdata .= "\r\n\r\n" . urldecode($v) . "\r\n";
+                            }
+                        } else {
                             $postdata .= '--' . $boundary . "\r\n";
-                            $postdata .= 'Content-Disposition: form-data; name="' . $name . ($this->_useBrackets? '[' . $k . ']': '') . '"';
-                            $postdata .= "\r\n\r\n" . urldecode($v) . "\r\n";
+                            $postdata .= 'Content-Disposition: form-data; name="' . $name . '"';
+                            $postdata .= "\r\n\r\n" . urldecode($value) . "\r\n";
                         }
-                    } else {
-                        $postdata .= '--' . $boundary . "\r\n";
-                        $postdata .= 'Content-Disposition: form-data; name="' . $name . '"';
-                        $postdata .= "\r\n\r\n" . urldecode($value) . "\r\n";
                     }
                 }
                 foreach ($this->_postFiles as $name => $value) {
@@ -770,10 +775,6 @@ class HTTP_Request {
         } elseif(!empty($this->_postData)) {
             $request .= 'Content-Length: ' . strlen($this->_postData) . "\r\n\r\n";
             $request .= $this->_postData;
-
-        // No post data, so simply add a final CRLF
-        } else {
-            $request .= "\r\n";
         }
         
         return $request;

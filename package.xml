@@ -25,23 +25,17 @@ Proxy Authentication, SSL, file uploads etc.
   </maintainers>
 
   <release>
-    <version>1.2.1</version>
-    <date>2004-04-29</date>
+    <version>1.2.2</version>
+    <date>2004-05-19</date>
     <state>stable</state>
     <license>BSD</license>
     <notes>
-Additions and changes:
- * Applied patch from #851 (First parameter of constructor is now optional)
- * Implemented #526 (It is now possible to set timeout on socket, via
-   parameter readTimeout)
- * Implemented #1141 (It is now possible to pass options to socket via 
-   parameter socketOptions, Net_Socket 1.0.2 is needed for this functionality)
- 
-Fixes:
- * Fixed #842 (Doc comments incorrectly described the possible return values)
- * Fixed #1152 (Incorrect handling of cookies with '=' in value)
- * Fixed #1158 (Cookie parameters are not necessarily lowercase)
- * Fixed #1080 (Cookies should not be urlencoded/urldecoded)
+Bug fixes:
+* Fixed #1037 (unable to connect to port 80 through HTTPS). This relies
+  on fix for Net_URL bug #1036, thus Net_URL 1.0.12 is now required.
+* Fixed #1333 (sending POST data on non-POST requests).
+* Fixed #1433 (overwriting the variable name when adding multiple files 
+  for upload).
     </notes>
     <filelist>
       <dir name="/" baseinstalldir="HTTP">
@@ -56,12 +50,32 @@ Fixes:
       </dir>
     </filelist>
     <deps>
-      <dep type="pkg" rel="ge" version="1.0.7">Net_URL</dep>
+      <dep type="pkg" rel="ge" version="1.0.12">Net_URL</dep>
       <dep type="pkg" rel="ge" version="1.0.2">Net_Socket</dep>
     </deps>
   </release>
   
   <changelog>
+    <release>
+      <version>1.2.1</version>
+      <date>2004-04-29</date>
+      <state>stable</state>
+      <license>BSD</license>
+      <notes>
+Additions and changes:
+ * Applied patch from #851 (First parameter of constructor is now optional)
+ * Implemented #526 (It is now possible to set timeout on socket, via
+   parameter readTimeout)
+ * Implemented #1141 (It is now possible to pass options to socket via 
+   parameter socketOptions, Net_Socket 1.0.2 is needed for this functionality)
+ 
+Fixes:
+ * Fixed #842 (Doc comments incorrectly described the possible return values)
+ * Fixed #1152 (Incorrect handling of cookies with '=' in value)
+ * Fixed #1158 (Cookie parameters are not necessarily lowercase)
+ * Fixed #1080 (Cookies should not be urlencoded/urldecoded)
+      </notes>
+    </release>
     <release>
       <version>1.2</version>
       <date>2003-10-27</date>
