@@ -23,7 +23,7 @@
     </notes>
     <filelist>
       <dir name="/" baseinstalldir="HTTP">
-        <file role="php">HTTP_Request.php</file>
+        <file role="php">Request.php</file>
         <dir name="docs" role="doc">
             <file>example.php</file>
         </dir>
