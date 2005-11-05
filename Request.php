@@ -262,7 +262,7 @@ class HTTP_Request {
 
         // Basic authentication
         if (!empty($this->_user)) {
-            $this->_requestHeaders['Authorization'] = 'Basic ' . base64_encode($this->_user . ':' . $this->_pass);
+            $this->addHeader('Authorization', 'Basic ' . base64_encode($this->_user . ':' . $this->_pass));
         }
 
         // Use gzip encoding if possible
@@ -398,7 +398,7 @@ class HTTP_Request {
     */
     function addHeader($name, $value)
     {
-        $this->_requestHeaders[$name] = $value;
+        $this->_requestHeaders[strtolower($name)] = $value;
     }
 
     /**
@@ -409,8 +409,8 @@ class HTTP_Request {
     */
     function removeHeader($name)
     {
-        if (isset($this->_requestHeaders[$name])) {
-            unset($this->_requestHeaders[$name]);
+        if (isset($this->_requestHeaders[strtolower($name)])) {
+            unset($this->_requestHeaders[strtolower($name)]);
         }
     }
 
@@ -542,7 +542,7 @@ class HTTP_Request {
     */
     function addCookie($name, $value)
     {
-        $cookies = isset($this->_requestHeaders['Cookie']) ? $this->_requestHeaders['Cookie']. '; ' : '';
+        $cookies = isset($this->_requestHeaders['cookie']) ? $this->_requestHeaders['cookie']. '; ' : '';
         $this->addHeader('Cookie', $cookies . $name . '=' . $value);
     }
     
@@ -585,28 +585,35 @@ class HTTP_Request {
             $host = 'ssl://' . $host;
         }
 
+        // magic quotes may fuck up file uploads and chunked response processing
+        $magicQuotes = ini_get('magic_quotes_runtime');
+        ini_set('magic_quotes_runtime', false);
+
         // If this is a second request, we may get away without
         // re-connecting if they're on the same server
-        if (PEAR::isError($err = $this->_sock->connect($host, $port, null, $this->_timeout, $this->_socketOptions)) ||
-            PEAR::isError($err = $this->_sock->write($this->_buildRequest()))) {
+        $err = $this->_sock->connect($host, $port, null, $this->_timeout, $this->_socketOptions);
+        PEAR::isError($err) or $err = $this->_sock->write($this->_buildRequest());
 
+        if (!PEAR::isError($err)) {
+            if (!empty($this->_readTimeout)) {
+                $this->_sock->setTimeout($this->_readTimeout[0], $this->_readTimeout[1]);
+            }
+
+            $this->_notify('sentRequest');
+
+            // Read the response
+            $this->_response = &new HTTP_Response($this->_sock, $this->_listeners);
+            $err = $this->_response->process($this->_saveBody && $saveBody);
+        }
+
+        ini_set('magic_quotes_runtime', $magicQuotes);
+
+        if (PEAR::isError($err)) {
             return $err;
         }
-        if (!empty($this->_readTimeout)) {
-            $this->_sock->setTimeout($this->_readTimeout[0], $this->_readTimeout[1]);
-        }
 
-        $this->_notify('sentRequest');
-
-        // Read the response
-        $this->_response = &new HTTP_Response($this->_sock, $this->_listeners);
-        if (PEAR::isError($err = $this->_response->process($this->_saveBody && $saveBody)) ) {
-            return $err;
-        }
 
         // Check for redirection
-        // Bugfix (PEAR) bug #18, 6 oct 2003 by Dave Mertens (headers are also stored lowercase, so we're gonna use them here)
-        // some non RFC2616 compliant servers (scripts) are returning lowercase headers ('location: xxx')
         if (    $this->_allowRedirects
             AND $this->_redirects <= $this->_maxRedirects
             AND $this->getResponseCode() > 300
@@ -681,6 +688,7 @@ class HTTP_Request {
         if (!isset($headername)) {
             return isset($this->_response->_headers)? $this->_response->_headers: array();
         } else {
+            $headername = strtolower($headername);
             return isset($this->_response->_headers[$headername]) ? $this->_response->_headers[$headername] : false;
         }
     }
@@ -730,10 +738,10 @@ class HTTP_Request {
         if (HTTP_REQUEST_METHOD_POST != $this->_method && HTTP_REQUEST_METHOD_PUT != $this->_method) {
             $this->removeHeader('Content-Type');
         } else {
-            if (empty($this->_requestHeaders['Content-Type'])) {
+            if (empty($this->_requestHeaders['content-type'])) {
                 // Add default content-type
                 $this->addHeader('Content-Type', 'application/x-www-form-urlencoded');
-            } elseif ('multipart/form-data' == $this->_requestHeaders['Content-Type']) {
+            } elseif ('multipart/form-data' == $this->_requestHeaders['content-type']) {
                 $boundary = 'HTTP_Request_' . md5(uniqid('request') . microtime());
                 $this->addHeader('Content-Type', 'multipart/form-data; boundary=' . $boundary);
             }
@@ -742,7 +750,8 @@ class HTTP_Request {
         // Request Headers
         if (!empty($this->_requestHeaders)) {
             foreach ($this->_requestHeaders as $name => $value) {
-                $request .= $name . ': ' . $value . "\r\n";
+                $canonicalName = implode('-', array_map('ucfirst', explode('-', $name)));
+                $request      .= $canonicalName . ': ' . $value . "\r\n";
             }
         }
 
@@ -791,7 +800,7 @@ class HTTP_Request {
                         $postdata .= "\r\n\r\n" . $data . "\r\n";
                     }
                 }
-                $postdata .= '--' . $boundary . "\r\n";
+                $postdata .= '--' . $boundary . "--\r\n";
             }
             $request .= 'Content-Length: ' . strlen($postdata) . "\r\n\r\n";
             $request .= $postdata;
@@ -1031,12 +1040,15 @@ class HTTP_Response
     function _processHeader($header)
     {
         list($headername, $headervalue) = explode(':', $header, 2);
-        $headername_i = strtolower($headername);
-        $headervalue  = ltrim($headervalue);
+        $headername  = strtolower($headername);
+        $headervalue = ltrim($headervalue);
         
-        if ('set-cookie' != $headername_i) {
-            $this->_headers[$headername]   = $headervalue;
-            $this->_headers[$headername_i] = $headervalue;
+        if ('set-cookie' != $headername) {
+            if (isset($this->_headers[$headername])) {
+                $this->_headers[$headername] .= ',' . $headervalue;
+            } else {
+                $this->_headers[$headername]  = $headervalue;
+            }
         } else {
             $this->_parseCookie($headervalue);
         }
