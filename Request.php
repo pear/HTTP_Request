@@ -128,9 +128,21 @@ class HTTP_Request {
 
     /**
     * Post data
-    * @var mixed
+    * @var array
     */
     var $_postData;
+
+   /**
+    * Request body  
+    * @var string
+    */
+    var $_body;
+
+   /**
+    * A list of methods that MUST NOT have a request body, per RFC 2616
+    * @var array
+    */
+    var $_bodyDisallowed = array('TRACE');
 
    /**
     * Files to post 
@@ -229,7 +241,8 @@ class HTTP_Request {
         $this->_method         =  HTTP_REQUEST_METHOD_GET;
         $this->_http           =  HTTP_REQUEST_HTTP_VER_1_1;
         $this->_requestHeaders = array();
-        $this->_postData       = null;
+        $this->_postData       = array();
+        $this->_body           = null;
 
         $this->_user = null;
         $this->_pass = null;
@@ -509,15 +522,27 @@ class HTTP_Request {
     }
 
     /**
-    * Adds raw postdata
+    * Adds raw postdata (DEPRECATED)
     *
     * @param string     The data
     * @param bool       Whether data is preencoded or not, default = already encoded
     * @access public
+    * @deprecated       deprecated since 1.3.0, method addBody() should be used instead
     */
     function addRawPostData($postdata, $preencoded = true)
     {
-        $this->_postData = $preencoded ? $postdata : urlencode($postdata);
+        $this->_body = $preencoded ? $postdata : urlencode($postdata);
+    }
+
+   /**
+    * Sets the request body (for POST, PUT and similar requests)
+    *
+    * @param    string  Request body
+    * @access   public
+    */
+    function setBody($body)
+    {
+        $this->_body = $body;
     }
 
     /**
@@ -735,7 +760,10 @@ class HTTP_Request {
 
         $request = $this->_method . ' ' . $url . ' HTTP/' . $this->_http . "\r\n";
 
-        if (HTTP_REQUEST_METHOD_POST != $this->_method && HTTP_REQUEST_METHOD_PUT != $this->_method) {
+        if (in_array($this->_method, $this->_bodyDisallowed) ||
+            (HTTP_REQUEST_METHOD_POST != $this->_method && empty($this->_body)) ||
+            (HTTP_REQUEST_METHOD_POST != $this->_method && empty($this->_postData) && empty($this->_postFiles))) {
+
             $this->removeHeader('Content-Type');
         } else {
             if (empty($this->_requestHeaders['content-type'])) {
@@ -756,12 +784,15 @@ class HTTP_Request {
         }
 
         // No post data or wrong method, so simply add a final CRLF
-        if ((HTTP_REQUEST_METHOD_POST != $this->_method && HTTP_REQUEST_METHOD_PUT != $this->_method) ||
-            (empty($this->_postData) && empty($this->_postFiles))) {
+        if (in_array($this->_method, $this->_bodyDisallowed) || 
+            (HTTP_REQUEST_METHOD_POST != $this->_method && empty($this->_body))) {
 
             $request .= "\r\n";
+
         // Post data if it's an array
-        } elseif ((!empty($this->_postData) && is_array($this->_postData)) || !empty($this->_postFiles)) {
+        } elseif (HTTP_REQUEST_METHOD_POST == $this->_method && 
+                  (!empty($this->_postData) || !empty($this->_postFiles))) {
+
             // "normal" POST request
             if (!isset($boundary)) {
                 $postdata = implode('&', array_map(
@@ -805,10 +836,11 @@ class HTTP_Request {
             $request .= 'Content-Length: ' . strlen($postdata) . "\r\n\r\n";
             $request .= $postdata;
 
-        // Post data if it's raw
-        } elseif(!empty($this->_postData)) {
-            $request .= 'Content-Length: ' . strlen($this->_postData) . "\r\n\r\n";
-            $request .= $this->_postData;
+        // Explicitly set request body
+        } elseif (!empty($this->_body)) {
+
+            $request .= 'Content-Length: ' . strlen($this->_body) . "\r\n\r\n";
+            $request .= $this->_body;
         }
         
         return $request;
@@ -1004,18 +1036,22 @@ class HTTP_Response
         $chunked = isset($this->_headers['transfer-encoding']) && ('chunked' == $this->_headers['transfer-encoding']);
         $gzipped = isset($this->_headers['content-encoding']) && ('gzip' == $this->_headers['content-encoding']);
         $hasBody = false;
-        while (!$this->_sock->eof()) {
-            if ($chunked) {
-                $data = $this->_readChunked();
-            } else {
-                $data = $this->_sock->read(4096);
-            }
-            if ('' != $data) {
-                $hasBody = true;
-                if ($saveBody || $gzipped) {
-                    $this->_body .= $data;
+        if (!isset($this->_headers['content-length']) || 0 != $this->_headers['content-length']) {
+            while (!$this->_sock->eof()) {
+                if ($chunked) {
+                    $data = $this->_readChunked();
+                } else {
+                    $data = $this->_sock->read(4096);
                 }
-                $this->_notify($gzipped? 'gzTick': 'tick', $data);
+                if ('' == $data) {
+                    break;
+                } else {
+                    $hasBody = true;
+                    if ($saveBody || $gzipped) {
+                        $this->_body .= $data;
+                    }
+                    $this->_notify($gzipped? 'gzTick': 'tick', $data);
+                }
             }
         }
         if ($hasBody) {
@@ -1121,10 +1157,10 @@ class HTTP_Response
                 $this->_chunkLength = hexdec($matches[1]); 
                 // Chunk with zero length indicates the end
                 if (0 == $this->_chunkLength) {
-                    $this->_sock->readAll(); // make this an eof()
+                    $this->_sock->readLine(); // make this an eof()
                     return '';
                 }
-            } elseif ($this->_sock->eof()) {
+            } else {
                 return '';
             }
         }
