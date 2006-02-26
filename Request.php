@@ -278,6 +278,11 @@ class HTTP_Request {
             $this->addHeader('Authorization', 'Basic ' . base64_encode($this->_user . ':' . $this->_pass));
         }
 
+        // Proxy authentication (see bug #5913)
+        if (!empty($this->_proxy_user)) {
+            $this->addHeader('Proxy-Authorization', 'Basic ' . base64_encode($this->_proxy_user . ':' . $this->_proxy_pass));
+        }
+
         // Use gzip encoding if possible
         // Avoid gzip encoding if using multibyte functions (see #1781)
         if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http && extension_loaded('zlib') &&
