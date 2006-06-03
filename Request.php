@@ -532,7 +532,7 @@ class HTTP_Request {
     * @param string     The data
     * @param bool       Whether data is preencoded or not, default = already encoded
     * @access public
-    * @deprecated       deprecated since 1.3.0, method addBody() should be used instead
+    * @deprecated       deprecated since 1.3.0, method setBody() should be used instead
     */
     function addRawPostData($postdata, $preencoded = true)
     {
