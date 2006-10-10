@@ -348,8 +348,24 @@ class HTTP_Request {
         if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http) {
             $this->addHeader('Host', $this->_generateHostHeader());
         }
+
+        // set '/' instead of empty path rather than check later (see bug #8662)
+        if (empty($this->_url->path)) {
+            $this->_url->path = '/';
+        } 
     }
     
+   /**
+    * Returns the current request URL  
+    *
+    * @return   string  Current request URL
+    * @access   public
+    */
+    function getUrl($url)
+    {
+        return empty($this->_url)? '': $this->_url->getUrl();
+    }
+
     /**
     * Sets a proxy to be used
     *
@@ -760,15 +776,15 @@ class HTTP_Request {
 
         $host = isset($this->_proxy_host) ? $this->_url->protocol . '://' . $this->_url->host : '';
         $port = (isset($this->_proxy_host) AND $this->_url->port != 80) ? ':' . $this->_url->port : '';
-        $path = (empty($this->_url->path)? '/': $this->_url->path) . $querystring;
+        $path = $this->_url->path . $querystring;
         $url  = $host . $port . $path;
 
         $request = $this->_method . ' ' . $url . ' HTTP/' . $this->_http . "\r\n";
 
         if (in_array($this->_method, $this->_bodyDisallowed) ||
-            (HTTP_REQUEST_METHOD_POST != $this->_method && empty($this->_body)) ||
-            (HTTP_REQUEST_METHOD_POST != $this->_method && empty($this->_postData) && empty($this->_postFiles))) {
-
+            (empty($this->_body) && (HTTP_REQUEST_METHOD_POST != $this->_method ||
+             (empty($this->_postData) && empty($this->_postFiles)))))
+        {
             $this->removeHeader('Content-Type');
         } else {
             if (empty($this->_requestHeaders['content-type'])) {
