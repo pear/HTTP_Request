@@ -211,6 +211,12 @@ class HTTP_Request {
     var $_socketOptions = null;
 
     /**
+     * Whether or not we are connected
+     * @var bool
+     */
+    var $_connected = false;
+
+    /**
     * Constructor
     *
     * Sets up the object
@@ -270,7 +276,7 @@ class HTTP_Request {
         // Default useragent
         $this->addHeader('User-Agent', 'PEAR HTTP_Request class ( http://pear.php.net/ )');
 
-        // Make sure keepalives dont knobble us
+        // We don't do keep-alives by default
         $this->addHeader('Connection', 'close');
 
         // Basic authentication
@@ -635,9 +641,15 @@ class HTTP_Request {
         $magicQuotes = ini_get('magic_quotes_runtime');
         ini_set('magic_quotes_runtime', false);
 
-        // If this is a second request, we may get away without
-        // re-connecting if they're on the same server
-        $err = $this->_sock->connect($host, $port, null, $this->_timeout, $this->_socketOptions);
+        $keepAlive = (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http && empty($this->_requestHeaders['connection'])) ||
+                     (!empty($this->_requestHeaders['connection']) && 'Keep-Alive' == $this->_requestHeaders['connection']);
+        if (!$this->_connected || !$keepAlive) {
+            $this->_notify('connect');
+            $err = $this->_sock->connect($host, $port, null, $this->_timeout, $this->_socketOptions);
+            $this->_connected = true;
+        } else {
+            $err = null;
+        }
         PEAR::isError($err) or $err = $this->_sock->write($this->_buildRequest());
 
         if (!PEAR::isError($err)) {
@@ -650,6 +662,19 @@ class HTTP_Request {
             // Read the response
             $this->_response = &new HTTP_Response($this->_sock, $this->_listeners);
             $err = $this->_response->process($this->_saveBody && $saveBody);
+
+            if ($keepAlive) {
+                $keepAlive = (isset($this->_response->_headers['content-length'])
+                              || (isset($this->_response->_headers['transfer-encoding'])
+                                  && strtolower($this->_response->_headers['transfer-encoding']) == 'chunked'));
+                if ($keepAlive) {
+                    if (isset($this->_response->_headers['connection'])) {
+                        $keepAlive = strtolower($this->_response->_headers['connection']) == 'keep-alive';
+                    } else {
+                        $keepAlive = 'HTTP/'.HTTP_REQUEST_HTTP_VER_1_1 == $this->_response->_protocol;
+                    }
+                }
+            }
         }
 
         ini_set('magic_quotes_runtime', $magicQuotes);
@@ -658,6 +683,9 @@ class HTTP_Request {
             return $err;
         }
 
+        if (!$keepAlive) {
+            $this->disconnect();
+        }
 
         // Check for redirection
         if (    $this->_allowRedirects
@@ -705,9 +733,20 @@ class HTTP_Request {
             return PEAR::raiseError('Too many redirects');
         }
 
-        $this->_sock->disconnect();
-
         return true;
+    }
+
+    /**
+     * Disconnect the socket, if connected. Only useful if using Keep-Alive.
+     *
+     * @access public
+     */
+    function disconnect() {
+        if ($this->_connected) {
+            $this->_notify('disconnect');
+            $this->_connected = false;
+            $this->_sock->disconnect();
+        }
     }
 
     /**
@@ -1058,18 +1097,42 @@ class HTTP_Response
         $gzipped = isset($this->_headers['content-encoding']) && ('gzip' == $this->_headers['content-encoding']);
         $hasBody = false;
         if (!isset($this->_headers['content-length']) || 0 != $this->_headers['content-length']) {
-            while (!$this->_sock->eof()) {
-                if ($chunked) {
-                    $data = $this->_readChunked();
-                } else {
-                    $data = $this->_sock->read(4096);
+            if (isset($this->_headers['content-length'])) {
+                $this->_toRead = $this->_headers['content-length'];
+                while (!$this->_sock->eof() && $this->_toRead > 0) {
+                    if ($chunked) {
+                        $data = $this->_readChunked();
+                    } else {
+                        $data = $this->_sock->read(4096 > $this->_toRead
+                                                   ? $this->_toRead
+                                                   : 4096);
+                        $this->_toRead -= strlen($data);
+                    }
+                    if ('' == $data) {
+                        break;
+                    } else {
+                        $hasBody = true;
+                        if ($saveBody || $gzipped) {
+                            $this->_body .= $data;
+                        }
+                        $this->_notify($gzipped? 'gzTick': 'tick', $data);
+                    }
                 }
-                if ('' == $data) {
-                    break;
-                } else {
-                    $hasBody = true;
-                    if ($saveBody || $gzipped) {
-                        $this->_body .= $data;
+            } else {
+                while (!$this->_sock->eof()) {
+                    if ($chunked) {
+                        $data = $this->_readChunked();
+                    } else {
+                        $data = $this->_sock->read(4096);
+                    }
+                    if ('' == $data) {
+                        break;
+                    } else {
+                        $hasBody = true;
+                        if ($saveBody || $gzipped) {
+                            $this->_body .= $data;
+                        }
+                        $this->_notify($gzipped? 'gzTick': 'tick', $data);
                     }
                     $this->_notify($gzipped? 'gzTick': 'tick', $data);
                 }
@@ -1174,11 +1237,12 @@ class HTTP_Response
         // at start of the next chunk?
         if (0 == $this->_chunkLength) {
             $line = $this->_sock->readLine();
+            $this->_toRead -= strlen($line);
             if (preg_match('/^([0-9a-f]+)/i', $line, $matches)) {
                 $this->_chunkLength = hexdec($matches[1]); 
                 // Chunk with zero length indicates the end
                 if (0 == $this->_chunkLength) {
-                    $this->_sock->readLine(); // make this an eof()
+                    $this->_toRead -= strlen($this->_sock->readLine()); // make this an eof()
                     return '';
                 }
             } else {
@@ -1186,9 +1250,10 @@ class HTTP_Response
             }
         }
         $data = $this->_sock->read($this->_chunkLength);
+        $this->_toRead -= strlen($data);
         $this->_chunkLength -= strlen($data);
         if (0 == $this->_chunkLength) {
-            $this->_sock->readLine(); // Trailing CRLF
+            $this->_toRead -= strlen($this->_sock->readLine()); // Trailing CRLF
         }
         return $data;
     }
