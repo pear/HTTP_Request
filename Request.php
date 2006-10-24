@@ -1160,7 +1160,11 @@ class HTTP_Response
         if ($hasBody) {
             // Uncompress the body if needed
             if ($gzipped) {
-                $this->_body = gzinflate(substr($this->_body, 10));
+                $body = $this->_decodeGzip($this->_body);
+                if (PEAR::isError($body)) {
+                    return $body;
+                }
+                $this->_body = $body;
                 $this->_notify('gotBody', $this->_body);
             } else {
                 $this->_notify('gotBody');
@@ -1289,6 +1293,98 @@ class HTTP_Response
         foreach (array_keys($this->_listeners) as $id) {
             $this->_listeners[$id]->update($this, $event, $data);
         }
+    }
+
+
+   /**
+    * Decodes the message-body encoded by gzip
+    *
+    * The real decoding work is done by gzinflate() built-in function, this
+    * method only parses the header and checks data for compliance with
+    * RFC 1952  
+    *
+    * @access   private
+    * @param    string  gzip-encoded data
+    * @return   string  decoded data
+    */
+    function _decodeGzip($data)
+    {
+        $length = strlen($data);
+        // If it doesn't look like gzip-encoded data, don't bother
+        if (18 > $length || strcmp(substr($data, 0, 2), "\x1f\x8b")) {
+            return $data;
+        }
+        $method = ord(substr($data, 2, 1));
+        if (8 != $method) {
+            return PEAR::raiseError('_decodeGzip(): unknown compression method');
+        }
+        $flags = ord(substr($data, 3, 1));
+        if ($flags & 224) {
+            return PEAR::raiseError('_decodeGzip(): reserved bits are set');
+        }
+
+        // header is 10 bytes minimum. may be longer, though.
+        $headerLength = 10;
+        // extra fields, need to skip 'em
+        if ($flags & 4) {
+            if ($length - $headerLength - 2 < 8) {
+                return PEAR::raiseError('_decodeGzip(): data too short');
+            }
+            $extraLength = unpack('v', substr($data, 10, 2));
+            if ($length - $headerLength - 2 - $extraLength[1] < 8) {
+                return PEAR::raiseError('_decodeGzip(): data too short');
+            }
+            $headerLength += $extraLength[1] + 2;
+        }
+        // file name, need to skip that
+        if ($flags & 8) {
+            if ($length - $headerLength - 1 < 8) {
+                return PEAR::raiseError('_decodeGzip(): data too short');
+            }
+            $filenameLength = strpos(substr($data, $headerLength), chr(0));
+            if (false === $filenameLength || $length - $headerLength - $filenameLength - 1 < 8) {
+                return PEAR::raiseError('_decodeGzip(): data too short');
+            }
+            $headerLength += $filenameLength + 1;
+        }
+        // comment, need to skip that also
+        if ($flags & 16) {
+            if ($length - $headerLength - 1 < 8) {
+                return PEAR::raiseError('_decodeGzip(): data too short');
+            }
+            $commentLength = strpos(substr($data, $headerLength), chr(0));
+            if (false === $commentLength || $length - $headerLength - $commentLength - 1 < 8) {
+                return PEAR::raiseError('_decodeGzip(): data too short');
+            }
+            $headerLength += $commentLength + 1;
+        }
+        // have a CRC for header. let's check
+        if ($flags & 1) {
+            if ($length - $headerLength - 2 < 8) {
+                return PEAR::raiseError('_decodeGzip(): data too short');
+            }
+            $crcReal   = 0xffff & crc32(substr($data, 0, $headerLength));
+            $crcStored = unpack('v', substr($data, $headerLength, 2));
+            if ($crcReal != $crcStored[1]) {
+                return PEAR::raiseError('_decodeGzip(): header CRC check failed');
+            }
+            $headerLength += 2;
+        }
+        // unpacked data CRC and size at the end of encoded data
+        $tmp = unpack('V2', substr($data, -8));
+        $dataCrc  = $tmp[1];
+        $dataSize = $tmp[2];
+
+        // finally, call the gzinflate() function
+        $unpacked = @gzinflate(substr($data, $headerLength, -8), $dataSize);
+        if (false === $unpacked) {
+            return PEAR::raiseError('_decodeGzip(): gzinflate() call failed');
+        } elseif ($dataSize != strlen($unpacked)) {
+            return PEAR::raiseError('_decodeGzip(): data size check failed');
+        } elseif ($dataCrc != crc32($unpacked)) {
+            return PEAR::raiseError('_decodeGzip(): data CRC check failed');
+        }
+        return $unpacked;
     }
 } // End class HTTP_Response
 ?>
