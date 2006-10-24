@@ -1182,6 +1182,9 @@ class HTTP_Response
     */
     function _processHeader($header)
     {
+        if (false === strpos($header, ':')) {
+            return;
+        }
         list($headername, $headervalue) = explode(':', $header, 2);
         $headername  = strtolower($headername);
         $headervalue = ltrim($headervalue);
