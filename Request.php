@@ -211,12 +211,6 @@ class HTTP_Request {
     var $_socketOptions = null;
 
     /**
-     * Whether or not we are connected
-     * @var bool
-     */
-    var $_connected = false;
-
-    /**
     * Constructor
     *
     * Sets up the object
@@ -243,7 +237,6 @@ class HTTP_Request {
     */
     function HTTP_Request($url = '', $params = array())
     {
-        $this->_sock           = &new Net_Socket();
         $this->_method         =  HTTP_REQUEST_METHOD_GET;
         $this->_http           =  HTTP_REQUEST_HTTP_VER_1_1;
         $this->_requestHeaders = array();
@@ -641,14 +634,30 @@ class HTTP_Request {
         $magicQuotes = ini_get('magic_quotes_runtime');
         ini_set('magic_quotes_runtime', false);
 
+        // RFC 2068, section 19.7.1: A client MUST NOT send the Keep-Alive 
+        // connection token to a proxy server...
+        if (isset($this->_proxy_host) && !empty($this->_requestHeaders['connection']) &&
+            'Keep-Alive' == $this->_requestHeaders['connection'])
+        {
+            $this->removeHeader('connection');
+        }
+
         $keepAlive = (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http && empty($this->_requestHeaders['connection'])) ||
                      (!empty($this->_requestHeaders['connection']) && 'Keep-Alive' == $this->_requestHeaders['connection']);
-        if (!$this->_connected || !$keepAlive) {
-            $this->_notify('connect');
-            $err = $this->_sock->connect($host, $port, null, $this->_timeout, $this->_socketOptions);
-            $this->_connected = true;
-        } else {
+        $sockets   = &PEAR::getStaticProperty('HTTP_Request', 'sockets');
+        $sockKey   = $host . ':' . $port;
+        unset($this->_sock);
+
+        // There is a connected socket in the "static" property?
+        if ($keepAlive && !empty($sockets[$sockKey]) &&
+            !empty($sockets[$sockKey]->fp)) 
+        {
+            $this->_sock =& $sockets[$sockKey];
             $err = null;
+        } else {
+            $this->_notify('connect');
+            $this->_sock =& new Net_Socket();
+            $err = $this->_sock->connect($host, $port, null, $this->_timeout, $this->_socketOptions);
         }
         PEAR::isError($err) or $err = $this->_sock->write($this->_buildRequest());
 
@@ -661,7 +670,10 @@ class HTTP_Request {
 
             // Read the response
             $this->_response = &new HTTP_Response($this->_sock, $this->_listeners);
-            $err = $this->_response->process($this->_saveBody && $saveBody);
+            $err = $this->_response->process(
+                $this->_saveBody && $saveBody,
+                HTTP_REQUEST_METHOD_HEAD != $this->_method
+            );
 
             if ($keepAlive) {
                 $keepAlive = (isset($this->_response->_headers['content-length'])
@@ -685,6 +697,9 @@ class HTTP_Request {
 
         if (!$keepAlive) {
             $this->disconnect();
+        // Store the connected socket in "static" property
+        } elseif (empty($sockets[$sockKey]) || empty($sockets[$sockKey]->fp)) {
+            $sockets[$sockKey] =& $this->_sock;
         }
 
         // Check for redirection
@@ -741,10 +756,10 @@ class HTTP_Request {
      *
      * @access public
      */
-    function disconnect() {
-        if ($this->_connected) {
+    function disconnect()
+    {
+        if (!empty($this->_sock) && !empty($this->_sock->fp)) {
             $this->_notify('disconnect');
-            $this->_connected = false;
             $this->_sock->disconnect();
         }
     }
@@ -1048,6 +1063,12 @@ class HTTP_Response
     */
     var $_listeners = array();
 
+   /**
+    * Bytes left to read from message-body
+    * @var null|int
+    */
+    var $_toRead;
+
     /**
     * Constructor
     *
@@ -1072,10 +1093,12 @@ class HTTP_Response
     * @param  bool      Whether to store response body in object property, set
     *                   this to false if downloading a LARGE file and using a Listener.
     *                   This is assumed to be true if body is gzip-encoded.
+    * @param  bool      Whether the response can actually have a message-body.
+    *                   Will be set to false for HEAD requests.
     * @throws PEAR_Error
     * @return mixed     true on success, PEAR_Error in case of malformed response
     */
-    function process($saveBody = true)
+    function process($saveBody = true, $canHaveBody = true)
     {
         do {
             $line = $this->_sock->readLine();
@@ -1092,52 +1115,48 @@ class HTTP_Response
 
         $this->_notify('gotHeaders', $this->_headers);
 
+        // RFC 2616, section 4.4:
+        // 1. Any response message which "MUST NOT" include a message-body ... 
+        // is always terminated by the first empty line after the header fields 
+        // 3. ... If a message is received with both a
+        // Transfer-Encoding header field and a Content-Length header field,
+        // the latter MUST be ignored.
+        $canHaveBody = $canHaveBody && $this->_code >= 200 && 
+                       $this->_code != 204 && $this->_code != 304;
+
         // If response body is present, read it and decode
         $chunked = isset($this->_headers['transfer-encoding']) && ('chunked' == $this->_headers['transfer-encoding']);
         $gzipped = isset($this->_headers['content-encoding']) && ('gzip' == $this->_headers['content-encoding']);
         $hasBody = false;
-        if (!isset($this->_headers['content-length']) || 0 != $this->_headers['content-length']) {
-            if (isset($this->_headers['content-length'])) {
-                $this->_toRead = $this->_headers['content-length'];
-                while (!$this->_sock->eof() && $this->_toRead > 0) {
-                    if ($chunked) {
-                        $data = $this->_readChunked();
-                    } else {
-                        $data = $this->_sock->read(4096 > $this->_toRead
-                                                   ? $this->_toRead
-                                                   : 4096);
-                        $this->_toRead -= strlen($data);
-                    }
-                    if ('' == $data) {
-                        break;
-                    } else {
-                        $hasBody = true;
-                        if ($saveBody || $gzipped) {
-                            $this->_body .= $data;
-                        }
-                        $this->_notify($gzipped? 'gzTick': 'tick', $data);
-                    }
-                }
+        if ($canHaveBody && ($chunked || !isset($this->_headers['content-length']) || 
+                0 != $this->_headers['content-length']))
+        {
+            if ($chunked || !isset($this->_headers['content-length'])) {
+                $this->_toRead = null;
             } else {
-                while (!$this->_sock->eof()) {
-                    if ($chunked) {
-                        $data = $this->_readChunked();
-                    } else {
-                        $data = $this->_sock->read(4096);
-                    }
-                    if ('' == $data) {
-                        break;
-                    } else {
-                        $hasBody = true;
-                        if ($saveBody || $gzipped) {
-                            $this->_body .= $data;
-                        }
-                        $this->_notify($gzipped? 'gzTick': 'tick', $data);
+                $this->_toRead = $this->_headers['content-length'];
+            }
+            while (!$this->_sock->eof() && (is_null($this->_toRead) || 0 < $this->_toRead)) {
+                if ($chunked) {
+                    $data = $this->_readChunked();
+                } elseif (is_null($this->_toRead)) {
+                    $data = $this->_sock->read(4096);
+                } else {
+                    $data = $this->_sock->read(min(4096, $this->_toRead));
+                    $this->_toRead -= strlen($data);
+                }
+                if ('' == $data) {
+                    break;
+                } else {
+                    $hasBody = true;
+                    if ($saveBody || $gzipped) {
+                        $this->_body .= $data;
                     }
                     $this->_notify($gzipped? 'gzTick': 'tick', $data);
                 }
             }
         }
+
         if ($hasBody) {
             // Uncompress the body if needed
             if ($gzipped) {
@@ -1237,12 +1256,11 @@ class HTTP_Response
         // at start of the next chunk?
         if (0 == $this->_chunkLength) {
             $line = $this->_sock->readLine();
-            $this->_toRead -= strlen($line);
             if (preg_match('/^([0-9a-f]+)/i', $line, $matches)) {
                 $this->_chunkLength = hexdec($matches[1]); 
                 // Chunk with zero length indicates the end
                 if (0 == $this->_chunkLength) {
-                    $this->_toRead -= strlen($this->_sock->readLine()); // make this an eof()
+                    $this->_sock->readLine(); // make this an eof()
                     return '';
                 }
             } else {
@@ -1250,10 +1268,9 @@ class HTTP_Response
             }
         }
         $data = $this->_sock->read($this->_chunkLength);
-        $this->_toRead -= strlen($data);
         $this->_chunkLength -= strlen($data);
         if (0 == $this->_chunkLength) {
-            $this->_toRead -= strlen($this->_sock->readLine()); // Trailing CRLF
+            $this->_sock->readLine(); // Trailing CRLF
         }
         return $data;
     }
