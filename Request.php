@@ -990,12 +990,15 @@ class HTTP_Request {
     * Notifies all registered listeners of an event.
     * 
     * Events sent by HTTP_Request object
-    * 'sentRequest': after the request was sent
+    * - 'connect': on connection to server
+    * - 'sentRequest': after the request was sent
+    * - 'disconnect': on disconnection from server
+    * 
     * Events sent by HTTP_Response object
-    * 'gotHeaders': after receiving response headers (headers are passed in $data)
-    * 'tick': on receiving a part of response body (the part is passed in $data)
-    * 'gzTick': on receiving a gzip-encoded part of response body (ditto)
-    * 'gotBody': after receiving the response body (passes the decoded body in $data if it was gzipped)
+    * - 'gotHeaders': after receiving response headers (headers are passed in $data)
+    * - 'tick': on receiving a part of response body (the part is passed in $data)
+    * - 'gzTick': on receiving a gzip-encoded part of response body (ditto)
+    * - 'gotBody': after receiving the response body (passes the decoded body in $data if it was gzipped)
     * 
     * @param    string  Event name
     * @param    mixed   Additional data
