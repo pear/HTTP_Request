@@ -58,6 +58,13 @@ define('HTTP_REQUEST_METHOD_TRACE',   'TRACE',   true);
 define('HTTP_REQUEST_HTTP_VER_1_0', '1.0', true);
 define('HTTP_REQUEST_HTTP_VER_1_1', '1.1', true);
 
+/**
+ * HTTP_Request main class
+ *
+ * @package HTTP_Request
+ * @author  Richard Heyes <richard@phpguru.org>
+ * @version $Revision$
+ */
 class HTTP_Request {
 
     /**
@@ -360,7 +367,7 @@ class HTTP_Request {
     * @return   string  Current request URL
     * @access   public
     */
-    function getUrl($url)
+    function getUrl()
     {
         return empty($this->_url)? '': $this->_url->getUrl();
     }
@@ -1015,6 +1022,10 @@ class HTTP_Request {
 
 /**
 * Response class to complement the Request class
+*
+* @author  Richard Heyes <richard@phpguru.org>
+* @package HTTP_Request
+* @version $Revision$
 */
 class HTTP_Response
 {

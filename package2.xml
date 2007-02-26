@@ -22,10 +22,10 @@ Proxy Authentication, SSL, file uploads etc.
 		<email>avb@php.net</email>
 		<active>yes</active>
 	</lead>
-	<date>2006-10-25</date>
+	<date>2007-03-xx</date>
 	<version>
-		<release>1.4.0</release>
-		<api>1.4.0</api>
+		<release>1.4.1</release>
+		<api>1.4.1</api>
 	</version>
 	<stability>
 		<release>stable</release>
@@ -33,28 +33,8 @@ Proxy Authentication, SSL, file uploads etc.
 	</stability>
 	<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
 	<notes>
-* Added Keep-Alive support (request #4806), thanks to Justin Patrin for the
-  initial patch. Please note that &quot;Connection: close&quot; header is still added
-  by default, you need to explicitly add &quot;Connection: Keep-Alive&quot; header or
-  remove &quot;Connection&quot; header if using HTTP 1.1
-* A new disconnect() method was added which forces disconnection from the 
-  server if Keep-Alive is used. Also two new events are sent to the Listeners:
-  &quot;connect&quot; and &quot;disconnect&quot;
-* Added getUrl() method (request #6589)
-* Added method to properly parse header of gzip-encoded data (see RFC 1952).
-  This takes care of situations when the server adds some additional data
-  to the header (bug #8245) or sends data that is not gzip-encoded when
-  &quot;Content-Encoding: gzip&quot; header is present (bug #8213)
-* &quot;Proxy-Authorization&quot; header is now properly set by constructor
-  (bug #5913)
-* Fixed doc comments mentioning addBody() method instead of proper setBody()
-  (bug #5969)
-* Fixed erroneous removal of &quot;Content-Type&quot; header from request
-  (bug #7922)
-* Bogus HTTP headers are now ignored (bug #8214)
-* Path is set to &quot;/&quot; if an URL without path (http://www.example.com)
-  is given (bug #8662)
-* Moved to package.xml version 2.0
+* Removed unintended parameter for getURL() (Bug #9586)
+* Improved API documentation (Bug #9984)
    </notes>
 	<contents>
 		<dir name="/">
@@ -90,6 +70,43 @@ Proxy Authentication, SSL, file uploads etc.
 	</dependencies>
 	<phprelease/>
 	<changelog>
+		<release>
+			<version>
+				<release>1.4.0</release>
+				<api>1.4.0</api>
+			</version>
+			<stability>
+				<release>stable</release>
+				<api>stable</api>
+			</stability>
+			<date>2006-10-25</date>
+			<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+			<notes>
+* Added Keep-Alive support (request #4806), thanks to Justin Patrin for the
+  initial patch. Please note that &quot;Connection: close&quot; header is still added
+  by default, you need to explicitly add &quot;Connection: Keep-Alive&quot; header or
+  remove &quot;Connection&quot; header if using HTTP 1.1
+* A new disconnect() method was added which forces disconnection from the 
+  server if Keep-Alive is used. Also two new events are sent to the Listeners:
+  &quot;connect&quot; and &quot;disconnect&quot;
+* Added getUrl() method (request #6589)
+* Added method to properly parse header of gzip-encoded data (see RFC 1952).
+  This takes care of situations when the server adds some additional data
+  to the header (bug #8245) or sends data that is not gzip-encoded when
+  &quot;Content-Encoding: gzip&quot; header is present (bug #8213)
+* &quot;Proxy-Authorization&quot; header is now properly set by constructor
+  (bug #5913)
+* Fixed doc comments mentioning addBody() method instead of proper setBody()
+  (bug #5969)
+* Fixed erroneous removal of &quot;Content-Type&quot; header from request
+  (bug #7922)
+* Bogus HTTP headers are now ignored (bug #8214)
+* Path is set to &quot;/&quot; if an URL without path (http://www.example.com)
+  is given (bug #8662)
+* Moved to package.xml version 2.0
+ 			</notes>
+      </release>
+
 		<release>
 			<version>
 				<release>1.3.0</release>
