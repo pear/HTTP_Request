@@ -7,7 +7,8 @@
  * 1) The file should be run in console, not in browser;
  * 2) You should turn output buffering OFF for this to work properly.
  * 
- * $Id$
+ * @version CVS: $Id$
+ * @ignore
  */
 
 require_once 'HTTP/Request.php';
