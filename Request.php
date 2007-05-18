@@ -76,6 +76,18 @@ define('HTTP_REQUEST_HTTP_VER_1_0', '1.0', true);
 define('HTTP_REQUEST_HTTP_VER_1_1', '1.1', true);
 /**#@-*/
 
+if (extension_loaded('mbstring') && (2 & ini_get('mbstring.func_overload'))) {
+   /**
+    * Whether string functions are overloaded by their mbstring equivalents 
+    */
+    define('HTTP_REQUEST_MBSTRING', true);
+} else {
+   /**
+    * @ignore
+    */
+    define('HTTP_REQUEST_MBSTRING', false);
+}
+
 /**
  * Class for performing HTTP requests
  *
@@ -317,10 +329,7 @@ class HTTP_Request
         }
 
         // Use gzip encoding if possible
-        // Avoid gzip encoding if using multibyte functions (see #1781)
-        if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http && extension_loaded('zlib') &&
-            0 == (2 & ini_get('mbstring.func_overload'))) {
-
+        if (HTTP_REQUEST_HTTP_VER_1_1 == $this->_http && extension_loaded('zlib')) {
             $this->addHeader('Accept-Encoding', 'gzip');
         }
     }
@@ -942,13 +951,17 @@ class HTTP_Request
                 }
                 $postdata .= '--' . $boundary . "--\r\n";
             }
-            $request .= 'Content-Length: ' . strlen($postdata) . "\r\n\r\n";
+            $request .= 'Content-Length: ' .
+                        (HTTP_REQUEST_MBSTRING? mb_strlen($postdata, 'iso-8859-1'): strlen($postdata)) .
+                        "\r\n\r\n";
             $request .= $postdata;
 
         // Explicitly set request body
         } elseif (!empty($this->_body)) {
 
-            $request .= 'Content-Length: ' . strlen($this->_body) . "\r\n\r\n";
+            $request .= 'Content-Length: ' .
+                        (HTTP_REQUEST_MBSTRING? mb_strlen($this->_body, 'iso-8859-1'): strlen($this->_body)) .
+                        "\r\n\r\n";
             $request .= $this->_body;
         }
         
@@ -1185,7 +1198,7 @@ class HTTP_Response
                     $data = $this->_sock->read(4096);
                 } else {
                     $data = $this->_sock->read(min(4096, $this->_toRead));
-                    $this->_toRead -= strlen($data);
+                    $this->_toRead -= HTTP_REQUEST_MBSTRING? mb_strlen($data, 'iso-8859-1'): strlen($data);
                 }
                 if ('' == $data) {
                     break;
@@ -1317,7 +1330,7 @@ class HTTP_Response
             }
         }
         $data = $this->_sock->read($this->_chunkLength);
-        $this->_chunkLength -= strlen($data);
+        $this->_chunkLength -= HTTP_REQUEST_MBSTRING? mb_strlen($data, 'iso-8859-1'): strlen($data);
         if (0 == $this->_chunkLength) {
             $this->_sock->readLine(); // Trailing CRLF
         }
@@ -1354,6 +1367,10 @@ class HTTP_Response
     */
     function _decodeGzip($data)
     {
+        if (HTTP_REQUEST_MBSTRING) {
+            $oldEncoding = mb_internal_encoding();
+            mb_internal_encoding('iso-8859-1');
+        }
         $length = strlen($data);
         // If it doesn't look like gzip-encoded data, don't bother
         if (18 > $length || strcmp(substr($data, 0, 2), "\x1f\x8b")) {
@@ -1428,6 +1445,9 @@ class HTTP_Response
             return PEAR::raiseError('_decodeGzip(): data size check failed');
         } elseif ((0xffffffff & $dataCrc) != (0xffffffff & crc32($unpacked))) {
             return PEAR::raiseError('_decodeGzip(): data CRC check failed');
+        }
+        if (HTTP_REQUEST_MBSTRING) {
+            mb_internal_encoding($oldEncoding);
         }
         return $unpacked;
     }
