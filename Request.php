@@ -1,52 +1,65 @@
 <?php
-// +-----------------------------------------------------------------------+
-// | Copyright (c) 2002-2003, Richard Heyes                                |
-// | All rights reserved.                                                  |
-// |                                                                       |
-// | Redistribution and use in source and binary forms, with or without    |
-// | modification, are permitted provided that the following conditions    |
-// | are met:                                                              |
-// |                                                                       |
-// | o Redistributions of source code must retain the above copyright      |
-// |   notice, this list of conditions and the following disclaimer.       |
-// | o Redistributions in binary form must reproduce the above copyright   |
-// |   notice, this list of conditions and the following disclaimer in the |
-// |   documentation and/or other materials provided with the distribution.|
-// | o The names of the authors may not be used to endorse or promote      |
-// |   products derived from this software without specific prior written  |
-// |   permission.                                                         |
-// |                                                                       |
-// | THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS   |
-// | "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT     |
-// | LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR |
-// | A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT  |
-// | OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, |
-// | SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT      |
-// | LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, |
-// | DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY |
-// | THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT   |
-// | (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE |
-// | OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.  |
-// |                                                                       |
-// +-----------------------------------------------------------------------+
-// | Author: Richard Heyes <richard@phpguru.org>                           |
-// +-----------------------------------------------------------------------+
-//
-// $Id$
-//
-// HTTP_Request Class
-//
-// Simple example, (Fetches yahoo.com and displays it):
-//
-// $a = &new HTTP_Request('http://www.yahoo.com/');
-// $a->sendRequest();
-// echo $a->getResponseBody();
-//
+/**
+ * Class for performing HTTP requests
+ *
+ * PHP versions 4 and 5
+ * 
+ * LICENSE:
+ *
+ * Copyright (c) 2002-2007, Richard Heyes
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * o Redistributions of source code must retain the above copyright
+ *   notice, this list of conditions and the following disclaimer.
+ * o Redistributions in binary form must reproduce the above copyright
+ *   notice, this list of conditions and the following disclaimer in the
+ *   documentation and/or other materials provided with the distribution.
+ * o The names of the authors may not be used to endorse or promote
+ *   products derived from this software without specific prior written
+ *   permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * @category    HTTP
+ * @package     HTTP_Request
+ * @author      Richard Heyes <richard@phpguru.org>
+ * @author      Alexey Borzov <avb@php.net>
+ * @copyright   2002-2007 Richard Heyes
+ * @license     http://opensource.org/licenses/bsd-license.php New BSD License
+ * @version     CVS: $Id$
+ * @link        http://pear.php.net/package/HTTP_Request/ 
+ */
 
+/**
+ * PEAR and PEAR_Error classes (for error handling)
+ */
 require_once 'PEAR.php';
+/**
+ * Socket class
+ */
 require_once 'Net/Socket.php';
+/**
+ * URL handling class
+ */ 
 require_once 'Net/URL.php';
 
+/**#@+
+ * Constants for HTTP request methods
+ */ 
 define('HTTP_REQUEST_METHOD_GET',     'GET',     true);
 define('HTTP_REQUEST_METHOD_HEAD',    'HEAD',    true);
 define('HTTP_REQUEST_METHOD_POST',    'POST',    true);
@@ -54,22 +67,36 @@ define('HTTP_REQUEST_METHOD_PUT',     'PUT',     true);
 define('HTTP_REQUEST_METHOD_DELETE',  'DELETE',  true);
 define('HTTP_REQUEST_METHOD_OPTIONS', 'OPTIONS', true);
 define('HTTP_REQUEST_METHOD_TRACE',   'TRACE',   true);
+/**#@-*/
 
+/**#@+
+ * Constants for HTTP protocol versions
+ */
 define('HTTP_REQUEST_HTTP_VER_1_0', '1.0', true);
 define('HTTP_REQUEST_HTTP_VER_1_1', '1.1', true);
+/**#@-*/
 
 /**
- * HTTP_Request main class
+ * Class for performing HTTP requests
  *
- * @package HTTP_Request
- * @author  Richard Heyes <richard@phpguru.org>
- * @version $Revision$
+ * Simple example (fetches yahoo.com and displays it):
+ * <code>
+ * $a = &new HTTP_Request('http://www.yahoo.com/');
+ * $a->sendRequest();
+ * echo $a->getResponseBody();
+ * </code>
+ *
+ * @category    HTTP
+ * @package     HTTP_Request
+ * @author      Richard Heyes <richard@phpguru.org>
+ * @author      Alexey Borzov <avb@php.net>
+ * @version     Release: @package_version@
  */
-class HTTP_Request {
-
+class HTTP_Request
+{
     /**
     * Instance of Net_URL
-    * @var object Net_URL
+    * @var Net_URL
     */
     var $_url;
 
@@ -105,7 +132,7 @@ class HTTP_Request {
 
     /**
     * Socket object
-    * @var object Net_Socket
+    * @var Net_Socket
     */
     var $_sock;
     
@@ -165,7 +192,7 @@ class HTTP_Request {
     
     /**
     * HTTP_Response object
-    * @var object HTTP_Response
+    * @var HTTP_Response
     */
     var $_response;
     
@@ -961,8 +988,8 @@ class HTTP_Request {
     * Adds a Listener to the list of listeners that are notified of
     * the object's events
     * 
-    * @param    object   HTTP_Request_Listener instance to attach
-    * @return   boolean  whether the listener was successfully attached
+    * @param    HTTP_Request_Listener   listener to attach
+    * @return   boolean                 whether the listener was successfully attached
     * @access   public
     */
     function attach(&$listener)
@@ -978,8 +1005,8 @@ class HTTP_Request {
    /**
     * Removes a Listener from the list of listeners 
     * 
-    * @param    object   HTTP_Request_Listener instance to detach
-    * @return   boolean  whether the listener was successfully detached
+    * @param    HTTP_Request_Listener   listener to detach
+    * @return   boolean                 whether the listener was successfully detached
     * @access   public
     */
     function detach(&$listener)
@@ -1021,17 +1048,19 @@ class HTTP_Request {
 
 
 /**
-* Response class to complement the Request class
-*
-* @author  Richard Heyes <richard@phpguru.org>
-* @package HTTP_Request
-* @version $Revision$
-*/
+ * Response class to complement the Request class
+ *
+ * @category    HTTP
+ * @package     HTTP_Request
+ * @author      Richard Heyes <richard@phpguru.org>
+ * @author      Alexey Borzov <avb@php.net>
+ * @version     Release: @package_version@
+ */
 class HTTP_Response
 {
     /**
     * Socket object
-    * @var object
+    * @var Net_Socket
     */
     var $_sock;
 
@@ -1086,9 +1115,8 @@ class HTTP_Response
     /**
     * Constructor
     *
-    * @param  object Net_Socket     socket to read the response from
-    * @param  array                 listeners attached to request
-    * @return mixed PEAR Error on error, true otherwise
+    * @param  Net_Socket    socket to read the response from
+    * @param  array         listeners attached to request
     */
     function HTTP_Response(&$sock, &$listeners)
     {
@@ -1398,7 +1426,7 @@ class HTTP_Response
             return PEAR::raiseError('_decodeGzip(): gzinflate() call failed');
         } elseif ($dataSize != strlen($unpacked)) {
             return PEAR::raiseError('_decodeGzip(): data size check failed');
-        } elseif ($dataCrc != crc32($unpacked)) {
+        } elseif ((0xffffffff & $dataCrc) != (0xffffffff & crc32($unpacked))) {
             return PEAR::raiseError('_decodeGzip(): data CRC check failed');
         }
         return $unpacked;
