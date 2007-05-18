@@ -106,6 +106,9 @@ if (extension_loaded('mbstring') && (2 & ini_get('mbstring.func_overload'))) {
  */
 class HTTP_Request
 {
+   /**#@+
+    * @access private
+    */
     /**
     * Instance of Net_URL
     * @var Net_URL
@@ -255,6 +258,7 @@ class HTTP_Request
     * @var array
     */
     var $_socketOptions = null;
+   /**#@-*/
 
     /**
     * Constructor
@@ -975,6 +979,7 @@ class HTTP_Request
     * @param    string  name for item
     * @param    mixed   item's values
     * @return   array   array with the following items: array('item name', 'item value');
+    * @access   private
     */
     function _flattenArray($name, $values)
     {
@@ -1001,6 +1006,17 @@ class HTTP_Request
     * Adds a Listener to the list of listeners that are notified of
     * the object's events
     * 
+    * Events sent by HTTP_Request object
+    * - 'connect': on connection to server
+    * - 'sentRequest': after the request was sent
+    * - 'disconnect': on disconnection from server
+    *
+    * Events sent by HTTP_Response object
+    * - 'gotHeaders': after receiving response headers (headers are passed in $data)
+    * - 'tick': on receiving a part of response body (the part is passed in $data)
+    * - 'gzTick': on receiving a gzip-encoded part of response body (ditto)
+    * - 'gotBody': after receiving the response body (passes the decoded body in $data if it was gzipped)
+    *
     * @param    HTTP_Request_Listener   listener to attach
     * @return   boolean                 whether the listener was successfully attached
     * @access   public
@@ -1036,20 +1052,10 @@ class HTTP_Request
    /**
     * Notifies all registered listeners of an event.
     * 
-    * Events sent by HTTP_Request object
-    * - 'connect': on connection to server
-    * - 'sentRequest': after the request was sent
-    * - 'disconnect': on disconnection from server
-    * 
-    * Events sent by HTTP_Response object
-    * - 'gotHeaders': after receiving response headers (headers are passed in $data)
-    * - 'tick': on receiving a part of response body (the part is passed in $data)
-    * - 'gzTick': on receiving a gzip-encoded part of response body (ditto)
-    * - 'gotBody': after receiving the response body (passes the decoded body in $data if it was gzipped)
-    * 
     * @param    string  Event name
     * @param    mixed   Additional data
     * @access   private
+    * @see      HTTP_Request::attach()
     */
     function _notify($event, $data = null)
     {

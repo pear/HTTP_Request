@@ -36,8 +36,14 @@
 /**
  * This will grab a webpage and display it
  *
- * @version CVS: $Id$
+ * @category    HTTP
+ * @package     HTTP_Request
+ * @version     CVS: $Id$
  * @ignore
+ */
+
+/**
+ * Class for performing HTTP requests
  */
 include('HTTP/Request.php');
 

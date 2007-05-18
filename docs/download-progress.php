@@ -6,11 +6,16 @@
  * Note two things:
  * 1) The file should be run in console, not in browser;
  * 2) You should turn output buffering OFF for this to work properly.
- * 
- * @version CVS: $Id$
+ *
+ * @category    HTTP
+ * @package     HTTP_Request
+ * @version     CVS: $Id$
  * @ignore
  */
 
+/**
+ * Class for performing HTTP requests
+ */
 require_once 'HTTP/Request.php';
 require_once 'HTTP/Request/Listener.php';
 require_once 'Console/ProgressBar.php';
@@ -19,6 +24,13 @@ PEAR::setErrorHandling(PEAR_ERROR_DIE);
 
 set_time_limit(0);
 
+/**
+ * A Listener for HTTP_Request that draws download progress indicator
+ *
+ * @category    HTTP
+ * @package     HTTP_Request
+ * @ignore
+ */
 class HTTP_Request_DownloadListener extends HTTP_Request_Listener
 {
    /**
@@ -28,7 +40,7 @@ class HTTP_Request_DownloadListener extends HTTP_Request_Listener
     var $_fp;
 
    /**
-    * Console_ProgressBar intance used to display the indicator
+    * Console_ProgressBar instance used to display the indicator
     * @var object
     */
     var $_bar;

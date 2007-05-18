@@ -22,10 +22,10 @@ Proxy Authentication, SSL, file uploads etc.
 		<email>avb@php.net</email>
 		<active>yes</active>
 	</lead>
-	<date>2007-03-xx</date>
+	<date>2007-05-18</date>
 	<version>
 		<release>1.4.1</release>
-		<api>1.4.1</api>
+		<api>1.4.0</api>
 	</version>
 	<stability>
 		<release>stable</release>
@@ -33,8 +33,14 @@ Proxy Authentication, SSL, file uploads etc.
 	</stability>
 	<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
 	<notes>
-* Removed unintended parameter for getURL() (Bug #9586)
-* Improved API documentation (Bug #9984)
+* Removed bogus parameter for getURL() (Bug #9586, thanks to Martin Jansen)
+* Improved API documentation (Bug #9984, thanks to Martin Jansen)
+* Fixed wrong Content-Length if using mbstring function overloading (bug #10605)
+* Fixed bogus &quot;data CRC check failed&quot; error on 64-bit systems (bug #10790,
+  thanks to Bill Moran)
+* Redone the way package handles mbstring function overloading, this will allow
+  using gzip Content-Encoding when said overloading is switched on
+* Added proper header comment blocks, improved phpdoc comments
    </notes>
 	<contents>
 		<dir name="/">
@@ -43,9 +49,13 @@ Proxy Authentication, SSL, file uploads etc.
 				<file baseinstalldir="HTTP" name="example.php" role="doc"/>
 			</dir>
 			<dir name="Request">
-				<file baseinstalldir="HTTP" name="Listener.php" role="php"/>
+				<file baseinstalldir="HTTP" name="Listener.php" role="php">
+					<tasks:replace from="@package_version@" to="version" type="package-info" />
+				</file>
 			</dir>
-			<file baseinstalldir="HTTP" name="Request.php" role="php"/>
+			<file baseinstalldir="HTTP" name="Request.php" role="php">
+				<tasks:replace from="@package_version@" to="version" type="package-info" />
+			</file>
 		</dir>
 	</contents>
 	<dependencies>
