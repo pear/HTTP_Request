@@ -967,6 +967,11 @@ class HTTP_Request
                         (HTTP_REQUEST_MBSTRING? mb_strlen($this->_body, 'iso-8859-1'): strlen($this->_body)) .
                         "\r\n\r\n";
             $request .= $this->_body;
+
+        // Terminate headers with CRLF on POST request with no body, too
+        } else {
+
+            $request .= "\r\n";
         }
         
         return $request;

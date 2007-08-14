@@ -22,9 +22,9 @@ Proxy Authentication, SSL, file uploads etc.
 		<email>avb@php.net</email>
 		<active>yes</active>
 	</lead>
-	<date>2007-05-18</date>
+	<date>2007-xx-xx</date>
 	<version>
-		<release>1.4.1</release>
+		<release>1.4.2</release>
 		<api>1.4.0</api>
 	</version>
 	<stability>
@@ -33,14 +33,8 @@ Proxy Authentication, SSL, file uploads etc.
 	</stability>
 	<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
 	<notes>
-* Removed bogus parameter for getURL() (Bug #9586, thanks to Martin Jansen)
-* Improved API documentation (Bug #9984, thanks to Martin Jansen)
-* Fixed wrong Content-Length if using mbstring function overloading (bug #10605)
-* Fixed bogus &quot;data CRC check failed&quot; error on 64-bit systems (bug #10790,
-  thanks to Bill Moran)
-* Redone the way package handles mbstring function overloading, this will allow
-  using gzip Content-Encoding when said overloading is switched on
-* Added proper header comment blocks, improved phpdoc comments
+* The final CRLF was not properly added to request headers on POST request 
+  with no post data (Thanks to Brock Weaver)
    </notes>
 	<contents>
 		<dir name="/">
@@ -80,7 +74,29 @@ Proxy Authentication, SSL, file uploads etc.
 	</dependencies>
 	<phprelease/>
 	<changelog>
-		<release>
+	    <release>
+			<version>
+				<release>1.4.1</release>
+				<api>1.4.0</api>
+			</version>
+			<stability>
+				<release>stable</release>
+				<api>stable</api>
+			</stability>
+			<date>2007-05-18</date>
+			<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+			<notes>
+* Removed bogus parameter for getURL() (Bug #9586, thanks to Martin Jansen)
+* Improved API documentation (Bug #9984, thanks to Martin Jansen)
+* Fixed wrong Content-Length if using mbstring function overloading (bug #10605)
+* Fixed bogus &quot;data CRC check failed&quot; error on 64-bit systems (bug #10790,
+  thanks to Bill Moran)
+* Redone the way package handles mbstring function overloading, this will allow
+  using gzip Content-Encoding when said overloading is switched on
+* Added proper header comment blocks, improved phpdoc comments
+		   </notes>
+		</release>
+	    <release>
 			<version>
 				<release>1.4.0</release>
 				<api>1.4.0</api>
