@@ -22,7 +22,7 @@ Proxy Authentication, SSL, file uploads etc.
 		<email>avb@php.net</email>
 		<active>yes</active>
 	</lead>
-	<date>2007-xx-xx</date>
+	<date>2007-10-26</date>
 	<version>
 		<release>1.4.2</release>
 		<api>1.4.0</api>
@@ -35,6 +35,13 @@ Proxy Authentication, SSL, file uploads etc.
 	<notes>
 * The final CRLF was not properly added to request headers on POST request 
   with no post data (Thanks to Brock Weaver)
+* Added error codes (request #12335, thanks to Joe Stump for the patch)
+* HTTP_Request sent broken requests on redirects with no trailing slash
+  (bug #12308, thanks to Joe Stump for the patch)
+* Requests with a body consisting of only a symbol '0' were sent without body
+  (reported privately by Sam Ghods)
+* download-progress.php example was broken since 1.4.0 due to addition of 
+  'connect' and 'disconnect' events. Now works again.
    </notes>
 	<contents>
 		<dir name="/">

@@ -901,7 +901,7 @@ class HTTP_Request
         $request = $this->_method . ' ' . $url . ' HTTP/' . $this->_http . "\r\n";
 
         if (in_array($this->_method, $this->_bodyDisallowed) ||
-            (empty($this->_body) && (HTTP_REQUEST_METHOD_POST != $this->_method ||
+            (0 == strlen($this->_body) && (HTTP_REQUEST_METHOD_POST != $this->_method ||
              (empty($this->_postData) && empty($this->_postFiles)))))
         {
             $this->removeHeader('Content-Type');
@@ -925,7 +925,7 @@ class HTTP_Request
 
         // No post data or wrong method, so simply add a final CRLF
         if (in_array($this->_method, $this->_bodyDisallowed) || 
-            (HTTP_REQUEST_METHOD_POST != $this->_method && empty($this->_body))) {
+            (HTTP_REQUEST_METHOD_POST != $this->_method && 0 == strlen($this->_body))) {
 
             $request .= "\r\n";
 
@@ -979,7 +979,7 @@ class HTTP_Request
             $request .= $postdata;
 
         // Explicitly set request body
-        } elseif (!empty($this->_body)) {
+        } elseif (0 < strlen($this->_body)) {
 
             $request .= 'Content-Length: ' .
                         (HTTP_REQUEST_MBSTRING? mb_strlen($this->_body, 'iso-8859-1'): strlen($this->_body)) .

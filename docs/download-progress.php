@@ -108,6 +108,10 @@ class HTTP_Request_DownloadListener extends HTTP_Request_Listener
                 fclose($this->_fp);
                 break;
 
+            case 'connect':
+            case 'disconnect':
+                break;
+
             default:
                 PEAR::raiseError("Unhandled event '{$event}'");
         } // switch
