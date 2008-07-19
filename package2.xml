@@ -22,9 +22,9 @@ Proxy Authentication, SSL, file uploads etc.
 		<email>avb@php.net</email>
 		<active>yes</active>
 	</lead>
-	<date>2007-10-26</date>
+	<date>2008-07-20</date>
 	<version>
-		<release>1.4.2</release>
+		<release>1.4.3</release>
 		<api>1.4.0</api>
 	</version>
 	<stability>
@@ -33,16 +33,9 @@ Proxy Authentication, SSL, file uploads etc.
 	</stability>
 	<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
 	<notes>
-* The final CRLF was not properly added to request headers on POST request 
-  with no post data (Thanks to Brock Weaver)
-* Added error codes (request #12335, thanks to Joe Stump for the patch)
-* HTTP_Request sent broken requests on redirects with no trailing slash
-  (bug #12308, thanks to Joe Stump for the patch)
-* Requests with a body consisting of only a symbol '0' were sent without body
-  (reported privately by Sam Ghods)
-* download-progress.php example was broken since 1.4.0 due to addition of 
-  'connect' and 'disconnect' events. Now works again.
-   </notes>
+* PHP 4.2.0 should be the minimal PHP version (bug #12354), also updated other
+  dependencies' versions to saner values
+    </notes>
 	<contents>
 		<dir name="/">
 			<dir name="docs">
@@ -62,10 +55,10 @@ Proxy Authentication, SSL, file uploads etc.
 	<dependencies>
 		<required>
 			<php>
-				<min>4.0.0</min>
+				<min>4.2.0</min>
 			</php>
 			<pearinstaller>
-				<min>1.4.0b1</min>
+				<min>1.4.3</min>
 			</pearinstaller>
 			<package>
 				<name>Net_URL</name>
@@ -75,13 +68,36 @@ Proxy Authentication, SSL, file uploads etc.
 			<package>
 				<name>Net_Socket</name>
 				<channel>pear.php.net</channel>
-				<min>1.0.2</min>
+				<min>1.0.7</min>
 			</package>
 		</required>
 	</dependencies>
 	<phprelease/>
 	<changelog>
-	    <release>
+		<release>
+			<version>
+				<release>1.4.2</release>
+				<api>1.4.0</api>
+			</version>
+			<stability>
+				<release>stable</release>
+				<api>stable</api>
+			</stability>
+			<date>2007-10-26</date>
+			<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+			<notes>
+* The final CRLF was not properly added to request headers on POST request 
+  with no post data (Thanks to Brock Weaver)
+* Added error codes (request #12335, thanks to Joe Stump for the patch)
+* HTTP_Request sent broken requests on redirects with no trailing slash
+  (bug #12308, thanks to Joe Stump for the patch)
+* Requests with a body consisting of only a symbol '0' were sent without body
+  (reported privately by Sam Ghods)
+* download-progress.php example was broken since 1.4.0 due to addition of 
+  'connect' and 'disconnect' events. Now works again.
+			</notes>
+		</release>
+		<release>
 			<version>
 				<release>1.4.1</release>
 				<api>1.4.0</api>
