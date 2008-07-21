@@ -682,10 +682,12 @@ class HTTP_Request
         $host = isset($this->_proxy_host) ? $this->_proxy_host : $this->_url->host;
         $port = isset($this->_proxy_port) ? $this->_proxy_port : $this->_url->port;
 
-        // 4.3.0 supports SSL connections using OpenSSL. The function test determines
-        // we running on at least 4.3.0
-        if (strcasecmp($this->_url->protocol, 'https') == 0 AND function_exists('file_get_contents') AND extension_loaded('openssl')) {
-            if (isset($this->_proxy_host)) {
+        if (strcasecmp($this->_url->protocol, 'https') == 0) {
+            // Bug #14127, don't try connecting to HTTPS sites without OpenSSL
+            if (version_compare(PHP_VERSION, '4.3.0', '<') || !extension_loaded('openssl')) {
+                return PEAR::raiseError('Need PHP 4.3.0 or later with OpenSSL support for https:// requests',
+                                        HTTP_REQUEST_ERROR_URL);
+            } elseif (isset($this->_proxy_host)) {
                 return PEAR::raiseError('HTTPS proxies are not supported', HTTP_REQUEST_ERROR_PROXY);
             }
             $host = 'ssl://' . $host;
@@ -1229,7 +1231,7 @@ class HTTP_Response
                     $data = $this->_sock->read(min(4096, $this->_toRead));
                     $this->_toRead -= HTTP_REQUEST_MBSTRING? mb_strlen($data, 'iso-8859-1'): strlen($data);
                 }
-                if ('' == $data) {
+                if ('' == $data && (!$this->_chunkLength || $this->_sock->eof())) {
                     break;
                 } else {
                     $hasBody = true;
@@ -1467,7 +1469,8 @@ class HTTP_Response
         $dataSize = $tmp[2];
 
         // finally, call the gzinflate() function
-        $unpacked = @gzinflate(substr($data, $headerLength, -8), $dataSize);
+        // don't pass $dataSize to gzinflate, see bugs #13135, #14370
+        $unpacked = gzinflate(substr($data, $headerLength, -8));
         if (false === $unpacked) {
             return PEAR::raiseError('_decodeGzip(): gzinflate() call failed', HTTP_REQUEST_ERROR_GZIP_READ);
         } elseif ($dataSize != strlen($unpacked)) {
