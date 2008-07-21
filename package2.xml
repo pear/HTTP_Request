@@ -22,7 +22,7 @@ Proxy Authentication, SSL, file uploads etc.
 		<email>avb@php.net</email>
 		<active>yes</active>
 	</lead>
-	<date>2008-07-20</date>
+	<date>2008-07-21</date>
 	<version>
 		<release>1.4.3</release>
 		<api>1.4.0</api>
@@ -33,8 +33,15 @@ Proxy Authentication, SSL, file uploads etc.
 	</stability>
 	<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
 	<notes>
+* Added possibility to get reason phrase from HTTP response (request #12352)
 * PHP 4.2.0 should be the minimal PHP version (bug #12354), also updated other
   dependencies' versions to saner values
+* Send a Content-Length header in request even if body is empty (request #12900)
+* Do not pass length parameter to gzinflate(), it could cause problems in some
+  corner cases (bugs #13135, #14370)
+* Return an error if trying to do a HTTPS request without OpenSSL support
+  (bug #14127)
+* Do not stop reading chunked response body prematurely (bug #14200)
     </notes>
 	<contents>
 		<dir name="/">
