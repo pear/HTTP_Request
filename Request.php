@@ -839,6 +839,17 @@ class HTTP_Request
     }
 
     /**
+    * Returns the response reason phrase
+    *
+    * @access public
+    * @return mixed     Response reason phrase, false if not set
+    */
+    function getResponseReason()
+    {
+        return isset($this->_response->_reason) ? $this->_response->_reason : false;
+    }
+
+    /**
     * Returns either the named header or all if no name given
     *
     * @access public
@@ -925,9 +936,8 @@ class HTTP_Request
             }
         }
 
-        // No post data or wrong method, so simply add a final CRLF
-        if (in_array($this->_method, $this->_bodyDisallowed) || 
-            (HTTP_REQUEST_METHOD_POST != $this->_method && 0 == strlen($this->_body))) {
+        // Method does not allow a body, simply add a final CRLF
+        if (in_array($this->_method, $this->_bodyDisallowed)) {
 
             $request .= "\r\n";
 
@@ -988,10 +998,10 @@ class HTTP_Request
                         "\r\n\r\n";
             $request .= $this->_body;
 
-        // Terminate headers with CRLF on POST request with no body, too
+        // No body: send a Content-Length header nonetheless (request #12900)
         } else {
 
-            $request .= "\r\n";
+            $request .= "Content-Length: 0\r\n\r\n";
         }
         
         return $request;
@@ -1121,6 +1131,12 @@ class HTTP_Response
     var $_code;
     
     /**
+    * Response reason phrase
+    * @var string
+    */
+    var $_reason;
+
+    /**
     * Response headers
     * @var array
     */
@@ -1188,11 +1204,12 @@ class HTTP_Response
     {
         do {
             $line = $this->_sock->readLine();
-            if (sscanf($line, 'HTTP/%s %s', $http_version, $returncode) != 2) {
+            if (!preg_match('!^(HTTP/\d\.\d) (\d{3})(?: (.+))?!', $line, $s)) {
                 return PEAR::raiseError('Malformed response', HTTP_REQUEST_ERROR_RESPONSE);
             } else {
-                $this->_protocol = 'HTTP/' . $http_version;
-                $this->_code     = intval($returncode);
+                $this->_protocol = $s[1];
+                $this->_code     = intval($s[2]);
+                $this->_reason   = empty($s[3])? null: $s[3];
             }
             while ('' !== ($header = $this->_sock->readLine())) {
                 $this->_processHeader($header);
