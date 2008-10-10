@@ -582,9 +582,13 @@ class HTTP_Request
     }
 
    /**
-    * Adds a file to upload
+    * Adds a file to form-based file upload
     *
-    * This also changes content-type to 'multipart/form-data' for proper upload
+    * Used to emulate file upload via a HTML form. The method also sets
+    * Content-Type of HTTP request to 'multipart/form-data'.
+    *
+    * If you just want to send the contents of a file as the body of HTTP
+    * request you should use setBody() method.
     *
     * @access public
     * @param  string    name of file-upload field
