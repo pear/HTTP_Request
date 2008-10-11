@@ -1013,9 +1013,12 @@ class HTTP_Request
 
         // No body: send a Content-Length header nonetheless (request #12900),
         // but do that only for methods that require a body (bug #14740)
-        } elseif (in_array($this->_method, $this->_bodyRequired)) {
+        } else {
 
-            $request .= "Content-Length: 0\r\n\r\n";
+            if (in_array($this->_method, $this->_bodyRequired)) {
+                $request .= "Content-Length: 0\r\n";
+            }
+            $request .= "\r\n";
         }
 
         return $request;
