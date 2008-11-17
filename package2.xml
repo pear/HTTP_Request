@@ -22,9 +22,9 @@ Proxy Authentication, SSL, file uploads etc.
 		<email>avb@php.net</email>
 		<active>yes</active>
 	</lead>
-	<date>2008-07-21</date>
+	<date>2008-11-17</date>
 	<version>
-		<release>1.4.3</release>
+		<release>1.4.4</release>
 		<api>1.4.0</api>
 	</version>
 	<stability>
@@ -33,15 +33,15 @@ Proxy Authentication, SSL, file uploads etc.
 	</stability>
 	<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
 	<notes>
-* Added possibility to get reason phrase from HTTP response (request #12352)
-* PHP 4.2.0 should be the minimal PHP version (bug #12354), also updated other
-  dependencies' versions to saner values
-* Send a Content-Length header in request even if body is empty (request #12900)
-* Do not pass length parameter to gzinflate(), it could cause problems in some
-  corner cases (bugs #13135, #14370)
-* Return an error if trying to do a HTTPS request without OpenSSL support
-  (bug #14127)
-* Do not stop reading chunked response body prematurely (bug #14200)
+Development of HTTP_Request package is halted, only bug fixing will be done.
+Please submit feature requests for HTTP_Request2 package.
+
+Fixes:
+  * Improved memory usage of _buildRequest() method (bug #14574)
+  * Clarified documentation for addFile() method to mention that it is useful
+    only for POST method file uploads (bug #14635)
+  * Do not send &quot;Content-Length: 0&quot; header for methods other than
+    POST and PUT, as some servers may return error 400 (bug #14740)
     </notes>
 	<contents>
 		<dir name="/">
@@ -81,6 +81,29 @@ Proxy Authentication, SSL, file uploads etc.
 	</dependencies>
 	<phprelease/>
 	<changelog>
+		<release>
+			<version>
+				<release>1.4.3</release>
+				<api>1.4.0</api>
+			</version>
+			<stability>
+				<release>stable</release>
+				<api>stable</api>
+			</stability>
+			<date>2008-07-21</date>
+			<license uri="http://www.opensource.org/licenses/bsd-license.php">BSD</license>
+			<notes>
+* Added possibility to get reason phrase from HTTP response (request #12352)
+* PHP 4.2.0 should be the minimal PHP version (bug #12354), also updated other
+  dependencies' versions to saner values
+* Send a Content-Length header in request even if body is empty (request #12900)
+* Do not pass length parameter to gzinflate(), it could cause problems in some
+  corner cases (bugs #13135, #14370)
+* Return an error if trying to do a HTTPS request without OpenSSL support
+  (bug #14127)
+* Do not stop reading chunked response body prematurely (bug #14200)
+			</notes>
+		</release>
 		<release>
 			<version>
 				<release>1.4.2</release>
