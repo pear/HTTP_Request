@@ -1,0 +1,34 @@
+{
+    "authors": [
+        {
+            "email": "richard@php.net",
+            "name": "Richard Heyes",
+            "role": "Lead"
+        },
+        {
+            "email": "avb@php.net",
+            "name": "Alexey Borzov",
+            "role": "Lead"
+        }
+    ],
+    "autoload": {
+        "classmap": [
+            "./"
+        ]
+    },
+    "description": "More info available on: http://pear.php.net/package/HTTP_Request",
+    "license": "BSD",
+    "name": "pear/http_request",
+    "support": {
+        "issues": "http://pear.php.net/bugs/search.php?cmd=display&package_name[]=HTTP_Request",
+        "source": "https://github.com/pear/HTTP_Request"
+    },
+    "type": "library",
+    "require": {
+        "pear/pear_exception": "*",
+        "pear/net_url": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "*"
+    }
+}
